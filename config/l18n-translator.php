@@ -28,54 +28,22 @@ return [
      * DeepL proxy — set DEEPL_AUTH_KEY in your .env to enable in-browser auto-translation.
      */
     'deepl' => [
-        'enabled'   => (bool) env('DEEPL_AUTH_KEY'),
-        'auth_key'  => env('DEEPL_AUTH_KEY'),
-        'endpoint'  => env('DEEPL_ENDPOINT', 'https://api.deepl.com/v2/translate'),
-        'formality' => 'prefer_less',
-        'context'   => '',
+        'enabled'     => (bool) env('DEEPL_AUTH_KEY'),
+        'auth_key'    => env('DEEPL_AUTH_KEY'),
+        'endpoint'    => env('DEEPL_ENDPOINT', 'https://api.deepl.com/v2/translate'),
+        'formality'   => 'prefer_less',
+        'context'     => '',
+        'concurrency' => 5,
     ],
 
     /*
-     * Languages shown in the UI. Add or remove as needed.
-     * Format: 'iso-code' => 'Display name'
-     */
-    'available_languages' => [
-        'en' => '🇬🇧 English',
-        'de' => '🇩🇪 Deutsch',
-        'fr' => '🇫🇷 Français',
-        'it' => '🇮🇹 Italiano',
-        'es' => '🇪🇸 Español',
-        'pt' => '🇵🇹 Português',
-        'nl' => '🇳🇱 Nederlands',
-        'sv' => '🇸🇪 Svenska',
-        'no' => '🇳🇴 Norsk',
-        'da' => '🇩🇰 Dansk',
-        'fi' => '🇫🇮 Suomi',
-        'pl' => '🇵🇱 Polski',
-        'ru' => '🇷🇺 Русский',
-        'ja' => '🇯🇵 日本語',
-        'zh' => '🇨🇳 中文',
-    ],
-
-    /*
-     * Mapping from ISO 639-1 codes to DeepL target_lang codes.
-     * Add entries here when you add languages above.
+     * Overrides for ISO codes that differ from DeepL's target_lang codes.
+     * Most languages work automatically (e.g. "de" → "DE").
+     * Only add entries here where DeepL deviates from the ISO code.
      */
     'deepl_lang_map' => [
-        'de' => 'DE',
-        'fr' => 'FR',
-        'it' => 'IT',
-        'es' => 'ES',
-        'pt' => 'PT-PT',
-        'nl' => 'NL',
-        'sv' => 'SV',
-        'no' => 'NB',
-        'da' => 'DA',
-        'fi' => 'FI',
-        'pl' => 'PL',
-        'ru' => 'RU',
-        'ja' => 'JA',
-        'zh' => 'ZH',
+        'no' => 'NB',      // DeepL uses NB (Bokmål), not NO
+        'pt' => 'PT-PT',   // DeepL distinguishes PT-PT / PT-BR; change to PT-BR if needed
     ],
 
 ];

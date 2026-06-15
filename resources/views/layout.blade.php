@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Translations') — L18n Manager</title>
+    <title>@yield('title', 'Translations') - L18n Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
@@ -42,7 +42,14 @@
 
     {{-- DeepL helper — always present, no-ops when DEEPL_AUTH_KEY is not set --}}
     <script>
-    const TARGET_LANG_MAP = @json(config('l18n-translator.deepl_lang_map', []));
+    const TARGET_LANG_MAP    = @json(config('l18n-translator.deepl_lang_map', []));
+    const DEEPL_CONCURRENCY  = {{ (int) config('l18n-translator.deepl.concurrency', 5) }};
+
+    async function runConcurrent(tasks, concurrency = DEEPL_CONCURRENCY) {
+        for (let i = 0; i < tasks.length; i += concurrency) {
+            await Promise.all(tasks.slice(i, i + concurrency).map(fn => fn()));
+        }
+    }
 
     async function deeplTranslate(text, targetLang) {
         const token = document.querySelector('meta[name="csrf-token"]')?.content

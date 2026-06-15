@@ -2,13 +2,14 @@
 
 namespace Dwoydig\L18nTranslator\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Http;
 
 class DeeplController extends Controller
 {
-    public function translate(Request $request)
+    public function translate(Request $request): JsonResponse
     {
         if (!config('l18n-translator.deepl.enabled')) {
             return response()->json(['error' => 'DeepL is not configured. Set DEEPL_AUTH_KEY in your .env.'], 503);
@@ -25,7 +26,7 @@ class DeeplController extends Controller
         $payload = [
             'text'         => [$encoded],
             'target_lang'  => $data['target_lang'],
-            'source_lang'  => 'EN',
+            'source_lang'  => strtoupper(config('l18n-translator.main_language', 'en')),
             'tag_handling' => 'xml',
         ];
         if (!empty($cfg['formality'])) {
@@ -45,7 +46,6 @@ class DeeplController extends Controller
             return response()->json([
                 'error'  => 'DeepL request failed',
                 'status' => $resp->status(),
-                'body'   => $resp->body(),
             ], 502);
         }
 
@@ -63,14 +63,12 @@ class DeeplController extends Controller
     private function encodePlaceholders(string $text): array
     {
         $placeholders = [];
-        $i = 0;
         $encoded = preg_replace_callback(
             '/(?<!\w):([a-zA-Z_][a-zA-Z0-9_]*)/',
-            function ($m) use (&$placeholders, &$i) {
-                $token = "__PH_{$i}__";
+            function ($m) use (&$placeholders) {
+                $token = '__PH_' . count($placeholders) . '__';
                 $placeholders[$token] = ':' . $m[1];
-                $i++;
-                return "{{{$token}}}";
+                return "{{$token}}";
             },
             $text
         );

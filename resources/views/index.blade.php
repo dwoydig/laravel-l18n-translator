@@ -4,32 +4,17 @@
 
 @section('content')
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    @foreach($availableLanguages as $iso => $name)
-    @php $exists = in_array($iso, $existingFiles); @endphp
-    <div class="bg-white rounded-lg border border-gray-200 p-4 flex items-center justify-between gap-3">
+    @forelse($languageFiles as $file)
+    <a href="{{ route('l18n.show', $file->filename) }}"
+       class="bg-white rounded-lg border border-gray-200 p-4 flex items-center gap-3 hover:border-blue-400 hover:shadow-sm transition-all">
+        <span class="text-2xl leading-none">{{ $file->flag }}</span>
         <div class="min-w-0">
-            <div class="font-medium text-gray-900">{{ $name }}</div>
-            <div class="text-xs text-gray-400 font-mono mt-0.5">{{ $iso }}.json</div>
+            <div class="font-medium text-gray-900">{{ $file->name }}</div>
+            <div class="text-xs text-gray-400 font-mono mt-0.5">{{ $file->basename }}</div>
         </div>
-        <div class="flex items-center gap-2 shrink-0">
-            @if($exists)
-                <a href="{{ route('l18n.show', $iso) }}"
-                   class="text-xs px-2.5 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">
-                    Edit
-                </a>
-                <a href="{{ route('l18n.tmx', $iso) }}"
-                   class="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-                    TMX
-                </a>
-            @else
-                <span class="text-xs text-gray-400 italic">not created</span>
-                <a href="{{ route('l18n.create') }}"
-                   class="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
-                    Create
-                </a>
-            @endif
-        </div>
-    </div>
-    @endforeach
+    </a>
+    @empty
+    <p class="text-gray-500 col-span-3">No language files found in <code>resources/lang/</code>.</p>
+    @endforelse
 </div>
 @endsection

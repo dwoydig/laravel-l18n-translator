@@ -4,6 +4,36 @@ A Laravel package for managing JSON language files through a web UI, with option
 
 **No frontend build step required.** The UI uses Tailwind CSS and Alpine.js loaded from CDN.
 
+===
+## Todo:
+add to web.php:
+
+```
+use Dwoydig\L18nTranslator\Http\Controllers\TranslationController;
+...
+
+add admin routes:
+Route::group(['prefix' => '/admin'], function() {
+    ...
+    Route::group(['prefix' => '/translation'], function() {
+        Route::get('/', [TranslationController::class, 'index'])->name('admin.translation.index');
+        Route::get('/create', [TranslationController::class, 'create'])->name('admin.translation.create');
+        Route::get('/string', [TranslationController::class, 'addstring'])->name('admin.translation.addstring');
+        Route::get('/string/{key}', [TranslationController::class, 'editstrings'])->name('admin.translation.editstrings');
+        Route::post('/appendtotranslation', [TranslationController::class, 'appendToTranslations'])->name('admin.translation.appendtotranslation');
+        Route::post('/updatealltranslations', [TranslationController::class, 'updateAllTranslations'])->name('admin.translation.updatealltranslations');
+        Route::post('/', [TranslationController::class, 'store'])->name('admin.translation.store');
+        Route::post('/dictionary', [TranslationController::class, 'storedictionary'])->name('admin.translation.storedictionary');
+        Route::get('/complete', [TranslationController::class, 'completeAll'])->name('admin.translation.completeAll');
+        Route::get('/{lang}', [TranslationController::class, 'show'])->name('admin.translation.show');
+        Route::get('/{lang}/tmx', [TranslationController::class, 'tmx'])->name('admin.translation.tmx');
+        Route::get('/{lang}/complete', [TranslationController::class, 'complete'])->name('admin.translation.complete');
+    });
+});
+```
+
+===
+
 ---
 
 ## Features

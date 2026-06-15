@@ -3,37 +3,56 @@
 namespace Dwoydig\L18nTranslator\Http\Controllers;
 
 use Dwoydig\L18nTranslator\TranslationManager;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 class TranslationController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
-        $existingFiles = $manager->getLanguageFiles()->pluck('filename')->toArray();
-        $availableLanguages = config('l18n-translator.available_languages', []);
-        return view('l18n-translator::index', compact('existingFiles', 'availableLanguages'));
+        $languageFiles = $manager->getLanguageFiles();
+        return view('l18n-translator::index', compact('languageFiles'));
     }
 
-    public function show(string $lang)
+    public function show(string $lang): View
     {
         $manager = new TranslationManager($lang);
-        $translations = $manager->mergeTranslations($manager->mainLanguage, $manager->translationLanguage);
-        $mainLanguage = $manager->mainLanguageIso;
-        $availableLanguages = $manager->availableLanguages;
-        return view('l18n-translator::show', compact('lang', 'translations', 'mainLanguage', 'availableLanguages'));
+        $translations = TranslationManager::mergeTranslations($manager->getMainLanguage(), $manager->getTranslationLanguage());
+        $mainLanguage = $manager->getMainLanguageIso();
+        $languageFiles = $manager->getLanguageFiles();
+        $orphaned = $manager->orphanedTranslations();
+        $isRtl = $languageFiles->firstWhere('filename', $lang)?->rtl ?? false;
+        return view('l18n-translator::show', compact('lang', 'translations', 'mainLanguage', 'languageFiles', 'orphaned', 'isRtl'));
     }
 
-    public function create()
+    public function adoptOrphans(Request $request): RedirectResponse
     {
-        $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
-        $availableLanguages = $manager->availableLanguages;
-        $existingFiles = $manager->getLanguageFiles()->pluck('filename')->toArray();
-        return view('l18n-translator::create', compact('availableLanguages', 'existingFiles'));
+        $lang = $request->input('lang');
+        $keys = $request->input('keys', []);
+        $mainLang = config('l18n-translator.main_language', 'en');
+
+        $manager = new TranslationManager($mainLang);
+        foreach ($keys as $key) {
+            $manager->setTranslation($key, '');
+        }
+        $manager->saveTranslationFile();
+
+        session()->flash('success', count($keys) . ' key(s) added to ' . $mainLang . ' — fill in the values.');
+        return redirect()->route('l18n.show', ['lang' => $lang]);
     }
 
-    public function store(Request $request)
+    public function create(): View
+    {
+        $existing = (new TranslationManager(config('l18n-translator.main_language', 'en')))
+            ->getLanguageFiles()->pluck('filename')->flip()->all();
+        $availableLanguages = array_diff_key(TranslationManager::getAllLocales(), $existing);
+        return view('l18n-translator::create', compact('availableLanguages'));
+    }
+
+    public function store(Request $request): RedirectResponse
     {
         $lang = $request->validate(['targetLanguage' => 'required|string|max:10'])['targetLanguage'];
         $manager = new TranslationManager($lang);
@@ -43,35 +62,36 @@ class TranslationController extends Controller
         return redirect()->route('l18n.show', ['lang' => $lang]);
     }
 
-    public function storeDictionary(Request $request)
+    public function storeDictionary(Request $request): RedirectResponse
     {
         $lang = $request->input('lang');
         $dict = $request->input('dict', []);
         $manager = new TranslationManager($lang);
         foreach ($dict as $key => $value) {
-            $manager->translationLanguage[$key] = $value;
+            $manager->setTranslation($key, $value);
         }
         $manager->saveTranslationFile();
         session()->flash('success', 'Translation saved.');
         return redirect()->route('l18n.show', ['lang' => $lang]);
     }
 
-    public function addString()
+    public function addString(): View
     {
-        $availableLanguages = config('l18n-translator.available_languages', []);
-        $mainLanguage = config('l18n-translator.main_language', 'en');
+        $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
+        $languageFiles = $manager->getLanguageFiles();
+        $mainLanguage = $manager->getMainLanguageIso();
         $isNew = true;
-        return view('l18n-translator::editstring', compact('availableLanguages', 'mainLanguage', 'isNew'));
+        return view('l18n-translator::editstring', compact('languageFiles', 'mainLanguage', 'isNew'));
     }
 
-    public function appendToTranslations(Request $request)
+    public function appendToTranslations(Request $request): RedirectResponse
     {
         $key = $request->input('key');
         $languages = $request->input('languages', []);
         foreach ($languages as $iso => $string) {
             if ($string !== '' && $string !== null) {
                 $manager = new TranslationManager($iso);
-                $manager->appendString($key, $string);
+                $manager->setTranslation($key, $string);
                 $manager->saveTranslationFile();
             }
         }
@@ -79,39 +99,27 @@ class TranslationController extends Controller
         return redirect()->back();
     }
 
-    public function editStrings(string $key)
+    public function editStrings(Request $request): View
     {
+        $key = $request->query('key', '');
         $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
-        $availableLanguages = $manager->availableLanguages;
-        $mainLanguage = $manager->mainLanguageIso;
-        $translations = $manager->getAllForKey($key);
+        $languageFiles = $manager->getLanguageFiles();
+        $mainLanguage = $manager->getMainLanguageIso();
+        $translations = $key !== '' ? $manager->getAllForKey($key) : [];
         $isNew = false;
-        return view('l18n-translator::editstring', compact('key', 'translations', 'availableLanguages', 'mainLanguage', 'isNew'));
+        return view('l18n-translator::editstring', compact('key', 'translations', 'languageFiles', 'mainLanguage', 'isNew'));
     }
 
-    public function updateAllTranslations(Request $request)
+    public function updateAllTranslations(Request $request): RedirectResponse
     {
         $key = $request->input('key');
         $languages = $request->input('languages', []);
         foreach ($languages as $iso => $string) {
             $manager = new TranslationManager($iso);
-            $manager->appendString($key, $string ?? '');
+            $manager->setTranslation($key, $string ?? '');
             $manager->saveTranslationFile();
         }
         session()->flash('success', "Key '{$key}' updated across all languages.");
         return redirect()->route('l18n.editstrings', ['key' => $key]);
-    }
-
-    public function tmx(string $lang)
-    {
-        $manager = new TranslationManager($lang);
-        $translations = $manager->mergeTranslations($manager->mainLanguage, $manager->translationLanguage);
-        $mainLanguageIso = $manager->mainLanguageIso;
-        $filename = $mainLanguageIso . '-' . $lang . '.tmx';
-        $content = view('l18n-translator::tmx', compact('translations', 'lang', 'mainLanguageIso'));
-        return response($content, 200, [
-            'Content-Type'        => 'application/xml',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ]);
     }
 }
