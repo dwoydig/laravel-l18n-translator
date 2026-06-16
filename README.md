@@ -1,4 +1,4 @@
-# L18n Translator
+# Laravel L18n Translator
 
 A web-based editor for Laravel language files. No uploading, downloading, or converting files between tools and services when adding new features or content to your Laravel project. Everything runs in your own browser, inside your own app. Built for teams that maintain an existing multi-language installation and want a simple, no-friction workflow. Optional [DeepL](https://www.deepl.com) auto-translation included.
 The UI uses Tailwind CSS and Alpine.js.
