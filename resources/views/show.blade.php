@@ -225,6 +225,12 @@ function translationEditor() {
         showOnlySelected: false,
         selected: new Set(),
 
+        init() {
+            if (new URLSearchParams(location.search).get('filter') === 'missing') {
+                this.$nextTick(() => this.selectMissing());
+            }
+        },
+
         get selectedCount() {
             return this.selected.size;
         },

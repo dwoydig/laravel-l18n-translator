@@ -15,10 +15,11 @@
             <a href="{{ route('l18n.index') }}" class="font-semibold text-gray-800 hover:text-gray-600 tracking-tight">
                 🌍 L18n Manager
             </a>
-            <nav class="flex items-center gap-5 text-sm">
-                <a href="{{ route('l18n.index') }}"     class="text-gray-600 hover:text-gray-900 font-medium">Languages</a>
-                <a href="{{ route('l18n.create') }}"    class="text-gray-600 hover:text-gray-900">+ Language</a>
-                <a href="{{ route('l18n.addstring') }}" class="text-gray-600 hover:text-gray-900">+ String</a>
+            <nav class="flex items-center gap-2 text-sm">
+                <a href="{{ route('l18n.index') }}"     class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium transition-colors">Languages</a>
+                <a href="{{ route('l18n.create') }}"    class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">+ Language</a>
+                <a href="{{ route('l18n.addstring') }}" class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">+ String</a>
+                <a href="{{ route('l18n.coverage') }}"  class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Coverage</a>
             </nav>
         </div>
     </header>

@@ -3,7 +3,7 @@
 @section('title', 'Create New Language')
 
 @section('content')
-<div class="max-w-md bg-white border border-gray-200 rounded-lg p-6"
+<div class="bg-white border border-gray-200 rounded-lg p-6"
      x-data="localeSearch()">
 
     <form method="POST" action="{{ route('l18n.store') }}">

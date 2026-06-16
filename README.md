@@ -4,49 +4,30 @@ A Laravel package for managing JSON language files through a web UI, with option
 
 **No frontend build step required.** The UI uses Tailwind CSS and Alpine.js loaded from CDN.
 
-===
-## Todo:
-add to web.php:
+---
 
-```
-use Dwoydig\L18nTranslator\Http\Controllers\TranslationController;
-...
+## Screenshots
 
-add admin routes:
-Route::group(['prefix' => '/admin'], function() {
-    ...
-    Route::group(['prefix' => '/translation'], function() {
-        Route::get('/', [TranslationController::class, 'index'])->name('admin.translation.index');
-        Route::get('/create', [TranslationController::class, 'create'])->name('admin.translation.create');
-        Route::get('/string', [TranslationController::class, 'addstring'])->name('admin.translation.addstring');
-        Route::get('/string/{key}', [TranslationController::class, 'editstrings'])->name('admin.translation.editstrings');
-        Route::post('/appendtotranslation', [TranslationController::class, 'appendToTranslations'])->name('admin.translation.appendtotranslation');
-        Route::post('/updatealltranslations', [TranslationController::class, 'updateAllTranslations'])->name('admin.translation.updatealltranslations');
-        Route::post('/', [TranslationController::class, 'store'])->name('admin.translation.store');
-        Route::post('/dictionary', [TranslationController::class, 'storedictionary'])->name('admin.translation.storedictionary');
-        Route::get('/complete', [TranslationController::class, 'completeAll'])->name('admin.translation.completeAll');
-        Route::get('/{lang}', [TranslationController::class, 'show'])->name('admin.translation.show');
-        Route::get('/{lang}/tmx', [TranslationController::class, 'tmx'])->name('admin.translation.tmx');
-        Route::get('/{lang}/complete', [TranslationController::class, 'complete'])->name('admin.translation.complete');
-    });
-});
-```
-
-===
+![Languages overview](docs/screenshots/languages.png)
+![Coverage dashboard](docs/screenshots/coverage.png)
+![Edit language](docs/screenshots/edit_language.png)
+![Edit string](docs/screenshots/edit_string.png)
+![Create language](docs/screenshots/create_language.png)
 
 ---
 
 ## Features
 
-- List, create, and edit `resources/lang/*.json` files
-- Side-by-side editor: source language vs. target language
-- Search / filter keys and values
-- "Missing only" filter to focus on untranslated strings
-- One-click DeepL auto-translation for missing strings (optional)
-- Add or edit a single key across all languages at once
-- Export any language pair as a TMX file
-- Laravel placeholder tokens (`:name`, `:count`, …) are preserved through translation
-- Drop-in standalone layout (Tailwind + Alpine CDN) — or use your own
+- **Language overview:** list all `resources/lang/*.json` files with flag emoji and locale name
+- **Per-language editor:** side-by-side view of source vs. target language with inline editing
+- **Search & filter:** filter rows by key or value in real time
+- **Missing-only mode:** show only untranslated keys with one click (or via `?filter=missing` URL param)
+- **Coverage dashboard:** visual block display showing translation completeness across all languages at a glance
+- **Orphaned key detection:** highlights keys present in a translation file but missing in the source language, with one-click adoption
+- **Add / edit a single key:** edit one key across every language file simultaneously
+- **DeepL auto-translation:** batch-translate selected missing strings via DeepL (optional; hidden when no key is configured)
+- **RTL support:** right-to-left text direction applied automatically for Arabic, Hebrew, Persian, and other RTL locales
+- **No hardcoded language lists:** available locales, display names, and RTL detection all come from PHP's `ext-intl` extension (backed by the [ICU library](https://icu.unicode.org)), so every locale ICU knows about is supported out of the box
 
 ---
 
@@ -54,6 +35,7 @@ Route::group(['prefix' => '/admin'], function() {
 
 - PHP 8.1+
 - Laravel 10, 11, or 12
+- `ext-intl` (for locale name resolution and flag detection)
 
 ---
 
@@ -71,7 +53,7 @@ Laravel auto-discovers the service provider. No manual registration needed.
 php artisan vendor:publish --tag=l18n-translator-config
 ```
 
-This creates `config/l18n-translator.php` where you can change the route prefix, middleware, available languages, and DeepL settings.
+This creates `config/l18n-translator.php`.
 
 ---
 
@@ -83,60 +65,68 @@ This creates `config/l18n-translator.php` where you can change the route prefix,
 return [
     'route_prefix'  => 'admin/translations', // URL prefix for all routes
     'middleware'    => ['web', 'auth'],       // protect the UI
-    'main_language' => 'en',                 // source language for translation
+    'main_language' => 'en',                 // source language all others are translated from
 
-    // null  = use built-in layout (Tailwind + Alpine CDN)
+    // null   = use built-in layout (Tailwind + Alpine CDN)
     // string = your own layout, e.g. 'layouts.admin'
     //          must @yield('content') and @yield('scripts')
     'layout' => null,
 
     'deepl' => [
-        'enabled'   => (bool) env('DEEPL_AUTH_KEY'),
-        'auth_key'  => env('DEEPL_AUTH_KEY'),
-        'endpoint'  => env('DEEPL_ENDPOINT', 'https://api.deepl.com/v2/translate'),
-        'formality' => 'prefer_less',
-        'context'   => '',
+        'enabled'     => (bool) env('DEEPL_AUTH_KEY'),
+        'auth_key'    => env('DEEPL_AUTH_KEY'),
+        'endpoint'    => env('DEEPL_ENDPOINT', 'https://api.deepl.com/v2/translate'),
+        'formality'   => 'prefer_less', // prefer_less | prefer_more | default
+        'context'     => '',            // optional global translation context hint
+        'concurrency' => 5,             // parallel DeepL requests per batch
     ],
 
-    'available_languages' => [
-        'en' => 'English',
-        'de' => 'Deutsch',
-        'fr' => 'Français',
-        // add your own ...
-    ],
-
+    // Overrides for ISO codes that differ from DeepL's target_lang codes.
+    // Most languages work automatically (e.g. "de" → "DE").
+    // Only add entries where DeepL deviates from the ISO code.
     'deepl_lang_map' => [
-        'de' => 'DE',
-        'fr' => 'FR',
-        // ISO 639-1 -> DeepL target_lang
+        'no' => 'NB',     // DeepL uses NB (Bokmål), not NO
+        'pt' => 'PT-PT',  // DeepL distinguishes PT-PT / PT-BR
     ],
 ];
 ```
 
 ### DeepL auto-translation
 
-Add your DeepL API key to `.env`:
+Get your API key from the [DeepL developer portal](https://developers.deepl.com/docs/getting-started/quickstart), then add it to your `.env` file.
 
 ```env
 DEEPL_AUTH_KEY=your-deepl-auth-key
 ```
 
-The "DeepL: fill missing" button in the editor will appear automatically. Without a key the UI works normally — only the auto-translate buttons are hidden.
+The free plan covers most use cases. After adding a key, the "Translate N keys" button becomes available in the editor. Without a key the UI works normally, only the translate button is hidden.
+
+There are no plans to add other translation services like Amazon Translate. I have worked with them before and found the translation quality to be poor. Use DeepL if you care about quality and your conversion rate.
 
 ---
 
 ## Usage
 
-Navigate to `/admin/translations` (or whatever `route_prefix` is set to).
+Navigate to `/admin/translations` (or your configured `route_prefix`).
 
-| Screen | What you can do |
-|---|---|
-| **Languages** | Overview of all configured languages; create missing ones |
-| **Edit language** | Side-by-side editor with search, missing-only filter, DeepL batch-translate |
-| **Edit string** | Edit one key across all languages; DeepL translates from source in one click |
-| **+ Language** | Creates an empty `{lang}.json` with all source-language keys pre-filled |
-| **+ String** | Add a new key/value pair to all language files at once |
-| **TMX export** | Download any language pair as a TMX file for use in CAT tools |
+| Screen | What you can do                                                                         |
+|---|-----------------------------------------------------------------------------------------|
+| **Languages** | Overview of all language files in your laravel lang folder                              |
+| **Coverage** | Visual block display of translation completeness per language                           |
+| **Edit language** | Editor with search, missing-only filter, orphan detection, and DeepL batch-translate    |
+| **+ Language** | Creates a new `{lang}.json` pre-filled with all required keys from the source language |
+| **+ String** | Add a new string to all language files at once                                          |
+| **Edit string** | Edit one key across all languages         |
+
+### Coverage screen
+
+The coverage screen (`/admin/translations/coverage`) shows a card per language with a block strip indicating how complete the translation is. Green blocks for translated keys, red for missing.
+
+Clicking a language card opens the editor pre-filtered to missing keys only.
+
+### Orphaned keys
+
+When a translation file contains keys that no longer exist in the source language, they are listed at the bottom of the editor. You can select and adopt them into the source language with one click.
 
 ---
 
@@ -148,7 +138,7 @@ Publish the Blade views to `resources/views/vendor/l18n-translator/`:
 php artisan vendor:publish --tag=l18n-translator-views
 ```
 
-Edit them freely — published views take precedence over the package's built-in ones.
+Edit them freely. Published views take precedence over the package's built-in ones.
 
 If you use a custom `layout`, set it in the config:
 
@@ -162,20 +152,21 @@ Your layout must include `@yield('content')` and `@yield('scripts')`.
 
 ## Routes
 
-All routes are named with the `l18n.` prefix:
+All routes are prefixed with `route_prefix` (default `admin/translations`) and named with the `l18n.` prefix:
 
 | Name | Method | URL |
 |---|---|---|
 | `l18n.index` | GET | `/admin/translations` |
-| `l18n.show` | GET | `/admin/translations/{lang}` |
+| `l18n.coverage` | GET | `/admin/translations/coverage` |
 | `l18n.create` | GET | `/admin/translations/create` |
+| `l18n.addstring` | GET | `/admin/translations/addstring` |
+| `l18n.editstrings` | GET | `/admin/translations/editstrings?key={key}` |
+| `l18n.show` | GET | `/admin/translations/{lang}` |
 | `l18n.store` | POST | `/admin/translations/store` |
 | `l18n.storedictionary` | POST | `/admin/translations/storedictionary` |
-| `l18n.addstring` | GET | `/admin/translations/addstring` |
-| `l18n.editstrings` | GET | `/admin/translations/editstrings/{key}` |
-| `l18n.updatealltranslations` | POST | `/admin/translations/updatealltranslations` |
 | `l18n.appendtotranslation` | POST | `/admin/translations/appendtotranslation` |
-| `l18n.tmx` | GET | `/admin/translations/tmx/{lang}` |
+| `l18n.updatealltranslations` | POST | `/admin/translations/updatealltranslations` |
+| `l18n.orphans.adopt` | POST | `/admin/translations/orphans/adopt` |
 | `l18n.deepl` | POST | `/admin/translations/deepl` |
 
 ---

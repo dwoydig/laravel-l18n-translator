@@ -9,6 +9,7 @@ Route::get('/',                  [TranslationController::class, 'index'])->name(
 Route::get('/create',            [TranslationController::class, 'create'])->name('create');
 Route::get('/addstring',         [TranslationController::class, 'addString'])->name('addstring');
 Route::get('/editstrings', [TranslationController::class, 'editStrings'])->name('editstrings');
+Route::get('/coverage',   [TranslationController::class, 'coverage'])->name('coverage');
 
 Route::post('/store',                [TranslationController::class, 'store'])->name('store');
 Route::post('/storedictionary',      [TranslationController::class, 'storeDictionary'])->name('storedictionary');

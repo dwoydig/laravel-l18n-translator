@@ -99,6 +99,43 @@ class TranslationController extends Controller
         return redirect()->back();
     }
 
+    public function coverage(): View
+    {
+        $mainIso  = config('l18n-translator.main_language', 'en');
+        $manager  = new TranslationManager($mainIso);
+        $main     = $manager->getMainLanguage();
+        $mainCount = count($main);
+
+        $stats = $manager->getLanguageFiles()
+            ->reject(fn($f) => $f->filename === $mainIso)
+            ->map(function ($file) use ($main, $mainCount) {
+                $lang = TranslationManager::loadJson($file->filename);
+                $translated = 0;
+                $missing    = 0;
+                foreach ($main as $key => $_) {
+                    if (isset($lang[$key]) && $lang[$key] !== '') {
+                        $translated++;
+                    } else {
+                        $missing++;
+                    }
+                }
+                $orphaned = count(array_diff_key($lang, $main));
+                return [
+                    'file'       => $file,
+                    'total'      => $mainCount,
+                    'translated' => $translated,
+                    'missing'    => $missing,
+                    'orphaned'   => $orphaned,
+                    'pct'        => $mainCount > 0 ? round($translated / $mainCount * 100) : 0,
+                ];
+            })
+            ->sortBy('pct');
+
+        $mainFile   = $manager->getLanguageFiles()->firstWhere('filename', $mainIso);
+        $languageFiles = $manager->getLanguageFiles();
+        return view('l18n-translator::coverage', compact('stats', 'mainIso', 'mainCount', 'mainFile', 'languageFiles'));
+    }
+
     public function editStrings(Request $request): View
     {
         $key = $request->query('key', '');
