@@ -136,6 +136,56 @@ class TranslationController extends Controller
         return view('l18n-translator::coverage', compact('stats', 'mainIso', 'mainCount', 'mainFile', 'languageFiles'));
     }
 
+    public function missingAll(): View
+    {
+        $mainIso  = config('l18n-translator.main_language', 'en');
+        $manager  = new TranslationManager($mainIso);
+        $main     = $manager->getMainLanguage();
+        $languageFiles = $manager->getLanguageFiles();
+
+        $missing = [];
+        foreach ($languageFiles->reject(fn($f) => $f->filename === $mainIso) as $file) {
+            $lang = TranslationManager::loadJson($file->filename);
+            foreach ($main as $key => $value) {
+                if (!isset($lang[$key]) || $lang[$key] === '') {
+                    $missing[] = [
+                        'lang'     => $file->filename,
+                        'langName' => $file->name,
+                        'langFlag' => $file->flag,
+                        'langRtl'  => $file->rtl,
+                        'key'      => $key,
+                        'original' => $value,
+                    ];
+                }
+            }
+        }
+
+        $langCount = collect($missing)->pluck('lang')->unique()->count();
+        return view('l18n-translator::missing', compact('missing', 'languageFiles', 'mainIso', 'langCount'));
+    }
+
+    public function storeMissingAll(Request $request): RedirectResponse
+    {
+        $dict = $request->input('dict', []);
+        $saved = 0;
+        foreach ($dict as $lang => $keys) {
+            $manager = new TranslationManager($lang);
+            $hasChanges = false;
+            foreach ($keys as $key => $value) {
+                if ($value !== null && $value !== '') {
+                    $manager->setTranslation($key, $value);
+                    $saved++;
+                    $hasChanges = true;
+                }
+            }
+            if ($hasChanges) {
+                $manager->saveTranslationFile();
+            }
+        }
+        session()->flash('success', $saved . ' translation(s) saved.');
+        return redirect()->route('l18n.missing');
+    }
+
     public function editStrings(Request $request): View
     {
         $key = $request->query('key', '');

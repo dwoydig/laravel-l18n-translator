@@ -117,6 +117,9 @@
 @endsection
 
 @section('scripts')
+@once
+    @include('l18n-translator::partials.deepl')
+@endonce
 <script>
 function editStringForm() {
     return {

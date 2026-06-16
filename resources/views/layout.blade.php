@@ -20,6 +20,7 @@
                 <a href="{{ route('l18n.create') }}"    class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">+ Language</a>
                 <a href="{{ route('l18n.addstring') }}" class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">+ String</a>
                 <a href="{{ route('l18n.coverage') }}"  class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Coverage</a>
+                <a href="{{ route('l18n.missing') }}"  class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Missing</a>
             </nav>
         </div>
     </header>
@@ -42,37 +43,9 @@
     </main>
 
     {{-- DeepL helper — always present, no-ops when DEEPL_AUTH_KEY is not set --}}
-    <script>
-    const TARGET_LANG_MAP    = @json(config('l18n-translator.deepl_lang_map', []));
-    const DEEPL_CONCURRENCY  = {{ (int) config('l18n-translator.deepl.concurrency', 5) }};
-
-    async function runConcurrent(tasks, concurrency = DEEPL_CONCURRENCY) {
-        for (let i = 0; i < tasks.length; i += concurrency) {
-            await Promise.all(tasks.slice(i, i + concurrency).map(fn => fn()));
-        }
-    }
-
-    async function deeplTranslate(text, targetLang) {
-        const token = document.querySelector('meta[name="csrf-token"]')?.content
-                   ?? document.querySelector('input[name="_token"]')?.value;
-        const res = await fetch('{{ route('l18n.deepl') }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept':       'application/json',
-                'X-CSRF-TOKEN': token,
-            },
-            body: JSON.stringify({ text, target_lang: targetLang }),
-        });
-        if (!res.ok) {
-            const msg = await res.text().catch(() => '');
-            throw new Error(`DeepL error ${res.status}: ${msg || res.statusText}`);
-        }
-        const data = await res.json();
-        if (!data?.text) throw new Error('DeepL response missing "text"');
-        return data.text;
-    }
-    </script>
+    @once
+        @include('l18n-translator::partials.deepl')
+    @endonce
 
     @yield('scripts')
 </body>

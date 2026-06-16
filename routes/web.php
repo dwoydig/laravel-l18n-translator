@@ -10,9 +10,11 @@ Route::get('/create',            [TranslationController::class, 'create'])->name
 Route::get('/addstring',         [TranslationController::class, 'addString'])->name('addstring');
 Route::get('/editstrings', [TranslationController::class, 'editStrings'])->name('editstrings');
 Route::get('/coverage',   [TranslationController::class, 'coverage'])->name('coverage');
+Route::get('/missing',    [TranslationController::class, 'missingAll'])->name('missing');
 
 Route::post('/store',                [TranslationController::class, 'store'])->name('store');
 Route::post('/storedictionary',      [TranslationController::class, 'storeDictionary'])->name('storedictionary');
+Route::post('/missing',              [TranslationController::class, 'storeMissingAll'])->name('missing.save');
 Route::post('/orphans/adopt',        [TranslationController::class, 'adoptOrphans'])->name('orphans.adopt');
 Route::post('/appendtotranslation',  [TranslationController::class, 'appendToTranslations'])->name('appendtotranslation');
 Route::post('/updatealltranslations',[TranslationController::class, 'updateAllTranslations'])->name('updatealltranslations');
