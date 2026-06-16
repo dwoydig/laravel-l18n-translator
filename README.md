@@ -8,10 +8,34 @@ A Laravel package for managing JSON language files through a web UI, with option
 
 ## Screenshots
 
+### Language overview
+
+All installed language files at a glance, with flag emoji and locale name resolved automatically from the ICU library. Click any language to open its editor.
+
 ![Languages overview](docs/screenshots/languages.png)
+
+### Coverage dashboard
+
+Shows translation completeness for every language at a glance. Each card displays a block strip (green = translated, red = missing), the exact counts for translated, missing, and orphaned keys, and the percentage complete. Click a card to open the editor pre-filtered to missing keys only.
+
 ![Coverage dashboard](docs/screenshots/coverage.png)
+
+### Per-language editor
+
+Side-by-side view of the source language and the translation. Filter by key or value in real time, switch to missing-only mode to focus on untranslated strings, and use DeepL to batch-translate selected keys in one click. Orphaned keys (present in the translation but removed from the source) are listed at the bottom with an option to adopt them back into the source language.
+
 ![Edit language](docs/screenshots/edit_language.png)
+
+### Edit a single key across all languages
+
+Search for a key and edit its value in every language file on one screen. Useful for fixing a typo or updating a string without having to switch between language editors. DeepL can translate from the source language for each target with one click.
+
 ![Edit string](docs/screenshots/edit_string.png)
+
+### Create a new language
+
+Searchable picker covering every locale known to the ICU library. Selecting a locale creates a new `.json` file pre-filled with all keys from the source language, ready to translate.
+
 ![Create language](docs/screenshots/create_language.png)
 
 ---
