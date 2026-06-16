@@ -1,6 +1,6 @@
 # Laravel L18n Translator
 
-A backend package for multi-language Laravel projects. It mounts a translation editor directly inside your app - no separate tools, no file juggling between folders and services, no format conversions, no broken or invalid `.json` files. Your `resources/lang/*.json` files are edited in the browser, can be automatically betch-translated via Deepl and saved directly back to disk, ready to be used use in your app.
+A backend package for multi-language Laravel projects. It mounts a translation editor directly inside your app - no separate tools, no file juggling between folders and services, no format conversions, no broken or invalid `.json` files. Your `resources/lang/*.json` files are edited in the browser, can be automatically batch-translated via Deepl and saved directly back to disk, ready to be used use in your app.
 
 Install it in any Laravel project that already uses Localization and JSON language files (see https://laravel.com/docs/13.x/localization) and needs a maintainable way to keep translations up to date. It is especially useful when multiple languages are added over time and keeping all translation keys in sync across files becomes error-prone.
 
