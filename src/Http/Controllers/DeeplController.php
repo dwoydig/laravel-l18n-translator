@@ -20,13 +20,25 @@ class DeeplController extends Controller
             'target_lang' => ['required', 'string', 'max:10'],
         ]);
 
+        $targetLang  = strtoupper($data['target_lang']);
+        $sourceLang  = strtoupper(config('l18n-translator.main_language', 'en'));
+        $samePrimary = explode('-', $sourceLang)[0] === explode('-', $targetLang)[0];
+        if ($samePrimary) {
+            return response()->json(['text' => $data['text']]);
+        }
+
         [$encoded, $placeholders] = $this->encodePlaceholders($data['text']);
 
         $cfg = config('l18n-translator.deepl');
+        // DeepL currently only supports EN-GB and EN-US, so we'll enforce that.
+        if (str_starts_with($targetLang, 'EN-') && !in_array($targetLang, ['EN-GB', 'EN-US'], true)) {
+            $targetLang = 'EN-GB';
+        }
+
         $payload = [
             'text'         => [$encoded],
-            'target_lang'  => $data['target_lang'],
-            'source_lang'  => strtoupper(config('l18n-translator.main_language', 'en')),
+            'target_lang'  => $targetLang,
+            'source_lang'  => $sourceLang,
             'tag_handling' => 'xml',
         ];
         if (!empty($cfg['formality'])) {

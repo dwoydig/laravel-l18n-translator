@@ -32,7 +32,7 @@
                 {{ $_type === 'success' ? 'bg-green-50  border border-green-200  text-green-800'  : '' }}
                 {{ $_type === 'error'   ? 'bg-red-50    border border-red-200    text-red-800'    : '' }}
                 {{ $_type === 'warning' ? 'bg-yellow-50 border border-yellow-200 text-yellow-800' : '' }}
-            ">{{ session($_type) }}</div>
+            ">{{ is_array(session($_type)) ? implode(' ', session($_type)) : session($_type) }}</div>
         </div>
         @endif
     @endforeach

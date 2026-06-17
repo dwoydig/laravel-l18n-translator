@@ -40,7 +40,7 @@ class TranslationController extends Controller
         }
         $manager->saveTranslationFile();
 
-        session()->flash('success', count($keys) . ' key(s) added to ' . $mainLang . ' — fill in the values.');
+        session()->flash('success', [count($keys) . ' key(s) added to ' . $mainLang . ' — fill in the values.']);
         return redirect()->route('l18n.show', ['lang' => $lang]);
     }
 
@@ -58,7 +58,7 @@ class TranslationController extends Controller
         $manager = new TranslationManager($lang);
         $manager->createEmptyTranslationFile();
         $manager->saveTranslationFile();
-        session()->flash('success', "Language file '{$lang}.json' created — fill in the translations below.");
+        session()->flash('success', ["Language file '{$lang}.json' created — fill in the translations below."]);
         return redirect()->route('l18n.show', ['lang' => $lang]);
     }
 
@@ -71,7 +71,7 @@ class TranslationController extends Controller
             $manager->setTranslation($key, $value);
         }
         $manager->saveTranslationFile();
-        session()->flash('success', 'Translation saved.');
+        session()->flash('success', ['Translation saved.']);
         return redirect()->route('l18n.show', ['lang' => $lang]);
     }
 
@@ -95,7 +95,7 @@ class TranslationController extends Controller
                 $manager->saveTranslationFile();
             }
         }
-        session()->flash('success', "Key '{$key}' added to all translation files.");
+        session()->flash('success', ["Key '{$key}' added to all translation files."]);
         return redirect()->back();
     }
 
@@ -182,7 +182,7 @@ class TranslationController extends Controller
                 $manager->saveTranslationFile();
             }
         }
-        session()->flash('success', $saved . ' translation(s) saved.');
+        session()->flash('success', [$saved . ' translation(s) saved.']);
         return redirect()->route('l18n.missing');
     }
 
@@ -206,7 +206,7 @@ class TranslationController extends Controller
             $manager->setTranslation($key, $string ?? '');
             $manager->saveTranslationFile();
         }
-        session()->flash('success', "Key '{$key}' updated across all languages.");
+        session()->flash('success', ["Key '{$key}' updated across all languages."]);
         return redirect()->route('l18n.editstrings', ['key' => $key]);
     }
 }
