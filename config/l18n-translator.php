@@ -45,5 +45,4 @@ return [
         'no' => 'NB',      // DeepL uses NB (Bokmål), not NO
         'pt' => 'PT-PT',   // DeepL distinguishes PT-PT / PT-BR; change to PT-BR if needed
     ],
-
 ];

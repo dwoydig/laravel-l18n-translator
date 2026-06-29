@@ -42,11 +42,6 @@
         @yield('content')
     </main>
 
-    {{-- DeepL helper — always present, no-ops when DEEPL_AUTH_KEY is not set --}}
-    @once
-        @include('l18n-translator::partials.deepl')
-    @endonce
-
     @yield('scripts')
 </body>
 </html>

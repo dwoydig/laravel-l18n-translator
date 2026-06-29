@@ -20,6 +20,9 @@ class DeeplController extends Controller
             'target_lang' => ['required', 'string', 'max:10'],
         ]);
 
+        // Release the session lock so concurrent DeepL requests are not serialised by PHP's session file locking.
+        session()->save();
+
         $targetLang  = strtoupper($data['target_lang']);
         $sourceLang  = strtoupper(config('l18n-translator.main_language', 'en'));
         $samePrimary = explode('-', $sourceLang)[0] === explode('-', $targetLang)[0];
