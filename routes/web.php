@@ -19,5 +19,6 @@ Route::post('/orphans/adopt',        [TranslationController::class, 'adoptOrphan
 Route::post('/appendtotranslation',  [TranslationController::class, 'appendToTranslations'])->name('appendtotranslation');
 Route::post('/updatealltranslations',[TranslationController::class, 'updateAllTranslations'])->name('updatealltranslations');
 Route::post('/deepl',                [DeeplController::class, 'translate'])->name('deepl');
+Route::get('/deepl/usage',           [DeeplController::class, 'usage'])->name('deepl.usage');
 
 Route::get('/{lang}', [TranslationController::class, 'show'])->name('show');

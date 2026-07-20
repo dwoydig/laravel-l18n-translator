@@ -32,15 +32,17 @@
                 </div>
 
                 @if(config('l18n-translator.deepl.enabled'))
+                @include('l18n-translator::partials.deepl-usage')
                 <div class="relative" x-data="{ showHint: false }">
                     <button type="button"
-                        @click="attemptTranslate()"
-                        @mouseenter="showHint = !canTranslate"
+                        @click="busy ? cancelTranslation() : attemptTranslate()"
+                        @mouseenter="showHint = !busy && !canTranslate"
                         @mouseleave="showHint = false"
-                        :disabled="busy || !canTranslate"
-                        class="px-3 py-1.5 text-sm bg-sky-600 text-white rounded hover:bg-sky-700
+                        :disabled="!busy && !canTranslate"
+                        :class="busy ? 'bg-gray-600 hover:bg-gray-700' : 'bg-sky-600 hover:bg-sky-700'"
+                        class="px-3 py-1.5 text-sm text-white rounded
                                disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
-                        <span x-text="busy ? 'Translating…' : 'Translate'"></span>
+                        <span x-text="busy ? 'Cancel' : 'Translate'"></span>
                     </button>
                     <div x-show="showHint"
                         class="absolute right-0 top-full mt-1 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
@@ -105,6 +107,7 @@
                             @if($file->filename === $mainLanguage)
                             <p x-show="showError('source')" class="mt-1 text-xs text-red-500">Source text is required for translation.</p>
                             @endif
+                            <p class="translate-error mt-1 text-xs text-red-600 hidden"></p>
                         </td>
                     </tr>
                     @endforeach
@@ -124,6 +127,7 @@
 function editStringForm() {
     return {
         busy: false,
+        abortController: null,
         dirty: false,
         keyValue: {!! json_encode($key ?? '') !!},
         sourceText: '',
@@ -137,10 +141,11 @@ function editStringForm() {
 
         get keyValid()    { return this.isNew ? this.keyValue !== '' : true; },
         get sourceValid() { return this.sourceText !== ''; },
-        get canSave()     { return this.keyValid; },
+        get canSave()     { return this.keyValid && !this.busy; },
         get canTranslate(){ return this.keyValid && this.sourceValid; },
 
         get saveHint() {
+            if (this.busy) return 'Cannot save while a translation job is running.';
             return !this.keyValid ? 'Translation key is required.' : '';
         },
 
@@ -174,23 +179,16 @@ function editStringForm() {
             const sourceLang = this.mainLang;
             const sourceTa  = document.querySelector(`textarea[data-lang="${sourceLang}"]`);
             const sourceText = sourceTa?.value?.trim();
-            this.busy = true;
-            const tasks = [...document.querySelectorAll('textarea[data-lang]')]
+            await runTranslationJob(this, signal => [...document.querySelectorAll('textarea[data-lang]')]
                 .filter(ta => ta.dataset.lang !== sourceLang)
-                .map(ta => async () => {
+                .map(ta => () => {
                     const targetLang = (TARGET_LANG_MAP[ta.dataset.lang]) ?? ta.dataset.lang.toUpperCase();
-                    try {
-                        ta.disabled = true;
-                        ta.value = await deeplTranslate(sourceText, targetLang);
-                    } catch (err) {
-                        ta.style.outline = '2px solid #ef4444';
-                        ta.title = err.message;
-                    } finally {
-                        ta.disabled = false;
-                    }
-                });
-            await runConcurrent(tasks);
-            this.busy = false;
+                    return translateField(ta, sourceText, targetLang, signal);
+                }));
+        },
+
+        cancelTranslation() {
+            this.abortController?.abort();
         },
     };
 }
