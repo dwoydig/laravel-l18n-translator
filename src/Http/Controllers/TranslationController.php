@@ -110,23 +110,26 @@ class TranslationController extends Controller
             ->reject(fn($f) => $f->filename === $mainIso)
             ->map(function ($file) use ($main, $mainCount) {
                 $lang = TranslationManager::loadJson($file->filename);
-                $translated = 0;
-                $missing    = 0;
-                foreach ($main as $key => $_) {
+                $translated    = 0;
+                $missing       = 0;
+                $missingChars  = 0;
+                foreach ($main as $key => $value) {
                     if (isset($lang[$key]) && $lang[$key] !== '') {
                         $translated++;
                     } else {
                         $missing++;
+                        $missingChars += mb_strlen((string) $value);
                     }
                 }
                 $orphaned = count(array_diff_key($lang, $main));
                 return [
-                    'file'       => $file,
-                    'total'      => $mainCount,
-                    'translated' => $translated,
-                    'missing'    => $missing,
-                    'orphaned'   => $orphaned,
-                    'pct'        => $mainCount > 0 ? round($translated / $mainCount * 100) : 0,
+                    'file'          => $file,
+                    'total'         => $mainCount,
+                    'translated'    => $translated,
+                    'missing'       => $missing,
+                    'missingChars'  => $missingChars,
+                    'orphaned'      => $orphaned,
+                    'pct'           => $mainCount > 0 ? round($translated / $mainCount * 100) : 0,
                 ];
             })
             ->sortBy('pct');

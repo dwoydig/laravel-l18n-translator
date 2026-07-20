@@ -14,7 +14,7 @@
 <form method="POST" action="{{ route('l18n.missing.save') }}" id="missing-form">
     @csrf
 
-    <div x-data="missingEditor()" class="space-y-3">
+    <div x-data="missingEditor()" x-effect="$store.deeplUsage.selectedChars = selectedChars" class="space-y-3">
 
         {{-- Controls bar --}}
         <div class="bg-white border border-gray-200 rounded-lg px-3 py-2.5 flex flex-wrap gap-2 items-center">
@@ -30,26 +30,32 @@
 
             {{-- DeepL --}}
             @if(config('l18n-translator.deepl.enabled'))
+            @include('l18n-translator::partials.deepl-usage')
             <div class="relative" x-data="{ showHint: false }">
                 <button type="button"
-                    @click="translateSelected()"
-                    @mouseenter="showHint = busy || translatableCount === 0"
+                    @click="busy ? cancelTranslation() : translateSelected()"
+                    @mouseenter="showHint = !busy && (translatableCount === 0 || $store.deeplUsage.overBudget)"
                     @mouseleave="showHint = false"
-                    :disabled="busy || translatableCount === 0"
-                    class="px-3 py-1.5 text-sm bg-sky-600 text-white rounded hover:bg-sky-700
+                    :disabled="!busy && (translatableCount === 0 || $store.deeplUsage.overBudget)"
+                    :class="busy ? 'bg-gray-600 hover:bg-gray-700' : 'bg-sky-600 hover:bg-sky-700'"
+                    class="px-3 py-1.5 text-sm text-white rounded
                            disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
-                    <span x-text="busy ? 'Translating…' : 'Translate ' + translatableCount + (translatableCount === 1 ? ' key' : ' keys')"></span>
+                    <span x-text="busy ? 'Cancel' : 'Translate ' + translatableCount + (translatableCount === 1 ? ' key' : ' keys')"></span>
                 </button>
                 <div x-show="showHint"
                     class="absolute right-0 top-full mt-1 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                    Select at least one row to translate.
+                    <span x-show="$store.deeplUsage.overBudget">Selected characters exceed remaining DeepL budget.</span>
+                    <span x-show="!$store.deeplUsage.overBudget">Select at least one row to translate.</span>
                 </div>
             </div>
             @endif
 
             {{-- Save --}}
             <button type="submit" form="missing-form"
-                class="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 font-medium whitespace-nowrap">
+                :disabled="busy"
+                :title="busy ? 'Cannot save while a translation job is running' : ''"
+                class="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 font-medium whitespace-nowrap
+                       disabled:opacity-40 disabled:cursor-not-allowed">
                 Save
             </button>
         </div>
@@ -129,6 +135,7 @@
                                 class="w-full border border-gray-200 rounded px-2 py-1 text-sm resize-y
                                        focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                             ></textarea>
+                            <p class="translate-error mt-1 text-xs text-red-600 hidden"></p>
                         </td>
                     </tr>
                     @endforeach
@@ -148,35 +155,28 @@
 @section('scripts')
 @once
     @include('l18n-translator::partials.deepl')
+    @include('l18n-translator::partials.row-selection')
 @endonce
 <script>
 function missingEditor() {
-    return {
-        search: '',
+    return withMixins({
         busy: false,
+        abortController: null,
         noResults: false,
-        showOnlySelected: false,
-        selected: new Set(),
 
-        get selectedCount() {
-            return this.selected.size;
-        },
-
-        get translatableCount() {
-            return [...(this.$refs.tbody?.querySelectorAll('tr') ?? [])]
-                .filter(r => this.selected.has(r.dataset.key) && r.dataset.original?.trim())
-                .length;
-        },
-
-        isVisible(el) {
-            if (this.showOnlySelected && !this.selected.has(el.dataset.key)) return false;
-            if (!this.search.trim()) return true;
-            const q = this.search.toLowerCase();
-            return el.dataset.key?.toLowerCase().includes(q)
-                || el.dataset.original?.toLowerCase().includes(q)
-                || el.dataset.lang?.toLowerCase().includes(q)
-                || el.dataset.langname?.toLowerCase().includes(q)
-                || el.querySelector('textarea')?.value?.toLowerCase().includes(q);
+        init() {
+            const langs = new URLSearchParams(location.search).get('langs');
+            if (langs) {
+                const langSet = new Set(langs.split(','));
+                this.$nextTick(() => {
+                    this.selected = new Set(
+                        this.visibleRows()
+                            .filter(r => langSet.has(r.dataset.lang))
+                            .map(r => r.dataset.key)
+                    );
+                    this.showOnlySelected = true;
+                });
+            }
         },
 
         rowClass(el) {
@@ -184,48 +184,19 @@ function missingEditor() {
             return isSelected ? 'bg-blue-50 cursor-pointer' : 'hover:bg-gray-50/60 cursor-pointer';
         },
 
-        toggleRow(key) {
-            const next = new Set(this.selected);
-            next.has(key) ? next.delete(key) : next.add(key);
-            this.selected = next;
-        },
-
-        visibleRows() {
-            return [...(this.$refs.tbody?.querySelectorAll('tr') ?? [])]
-                .filter(r => r.style.display !== 'none');
-        },
-
-        selectAll() {
-            this.selected = new Set(this.visibleRows().map(r => r.dataset.key));
-        },
-
-        selectNone() {
-            this.selected = new Set();
-        },
-
         async translateSelected() {
             if (!this.selected.size) return;
-            this.busy = true;
-            const tasks = this.visibleRows()
-                .filter(row => this.selected.has(row.dataset.key) && row.dataset.original?.trim())
-                .map(row => async () => {
-                    const ta = row.querySelector('textarea');
-                    const lang = row.dataset.lang;
-                    const targetLang = (TARGET_LANG_MAP || {})[lang] ?? lang.toUpperCase();
-                    try {
-                        ta.disabled = true;
-                        ta.value = await deeplTranslate(row.dataset.original, targetLang);
-                    } catch (err) {
-                        ta.style.outline = '2px solid #ef4444';
-                        ta.title = err.message;
-                    } finally {
-                        ta.disabled = false;
-                    }
-                });
-            await runConcurrent(tasks);
-            this.busy = false;
+            await runTranslationJob(this, signal => this.translatableRows()
+                .map(row => () => {
+                    const targetLang = (TARGET_LANG_MAP || {})[row.dataset.lang] ?? row.dataset.lang.toUpperCase();
+                    return translateField(row.querySelector('textarea'), row.dataset.original, targetLang, signal);
+                }));
         },
-    };
+
+        cancelTranslation() {
+            this.abortController?.abort();
+        },
+    }, filterableRowsMixin(['lang', 'langname']));
 }
 </script>
 @endsection

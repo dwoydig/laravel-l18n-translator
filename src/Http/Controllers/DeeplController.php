@@ -9,6 +9,33 @@ use Illuminate\Support\Facades\Http;
 
 class DeeplController extends Controller
 {
+    public function usage(): JsonResponse
+    {
+        if (!config('l18n-translator.deepl.enabled')) {
+            return response()->json(['error' => 'DeepL is not configured. Set DEEPL_AUTH_KEY in your .env.'], 503);
+        }
+
+        $cfg = config('l18n-translator.deepl');
+        $usageEndpoint = preg_replace('#/translate$#', '/usage', $cfg['endpoint']);
+
+        $resp = Http::withHeaders([
+            'Authorization' => 'DeepL-Auth-Key ' . $cfg['auth_key'],
+            'Accept'        => 'application/json',
+        ])->timeout(10)->get($usageEndpoint);
+
+        if (!$resp->successful()) {
+            return response()->json([
+                'error'  => 'DeepL usage request failed',
+                'status' => $resp->status(),
+            ], 502);
+        }
+
+        return response()->json([
+            'character_count' => $resp->json('character_count'),
+            'character_limit' => $resp->json('character_limit'),
+        ]);
+    }
+
     public function translate(Request $request): JsonResponse
     {
         if (!config('l18n-translator.deepl.enabled')) {
