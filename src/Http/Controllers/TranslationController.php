@@ -189,6 +189,12 @@ class TranslationController extends Controller
         return redirect()->route('l18n.missing');
     }
 
+    public function keys(): \Illuminate\Http\JsonResponse
+    {
+        $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
+        return response()->json(array_keys($manager->getMainLanguage()));
+    }
+
     public function editStrings(Request $request): View
     {
         $key = $request->query('key', '');

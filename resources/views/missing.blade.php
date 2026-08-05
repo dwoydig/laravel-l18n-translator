@@ -66,20 +66,10 @@
                 <thead class="bg-gray-50 border-b border-gray-200 text-left">
                     <tr>
                         <th class="w-8 px-3 py-2.5">
-                            <div class="relative" x-data="{ open: false }">
-                                <button type="button" @click="open = !open"
-                                    class="w-5 h-5 rounded border border-gray-300 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-500"
-                                    title="Select…">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                </button>
-                                <div x-show="open" @click.outside="open = false"
-                                    class="absolute left-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded shadow-md text-sm w-28">
-                                    <button type="button" @click="selectAll(); open = false"
-                                        class="w-full text-left px-3 py-1.5 hover:bg-gray-50">All</button>
-                                    <button type="button" @click="selectNone(); open = false"
-                                        class="w-full text-left px-3 py-1.5 hover:bg-gray-50">None</button>
-                                </div>
-                            </div>
+                            <input type="checkbox"
+                                x-effect="$el.indeterminate = selectedCount > 0 && selectedCount < visibleRows().length; $el.checked = selectedCount > 0 && selectedCount === visibleRows().length"
+                                @click="selectedCount === visibleRows().length ? selectNone() : selectAll()"
+                                class="rounded border-gray-300 text-blue-600 cursor-pointer">
                         </th>
                         <th class="px-4 py-2.5 font-medium text-gray-600 w-1/3">Key</th>
                         <th class="px-4 py-2.5 font-medium text-gray-600">

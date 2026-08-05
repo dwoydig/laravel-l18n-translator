@@ -20,5 +20,6 @@ Route::post('/appendtotranslation',  [TranslationController::class, 'appendToTra
 Route::post('/updatealltranslations',[TranslationController::class, 'updateAllTranslations'])->name('updatealltranslations');
 Route::post('/deepl',                [DeeplController::class, 'translate'])->name('deepl');
 Route::get('/deepl/usage',           [DeeplController::class, 'usage'])->name('deepl.usage');
+Route::get('/keys',                  [TranslationController::class, 'keys'])->name('keys');
 
 Route::get('/{lang}', [TranslationController::class, 'show'])->name('show');
