@@ -86,8 +86,9 @@
                     </template>
                 </ul>
             </div>
-
             <nav class="flex items-center gap-2 text-sm shrink-0 ml-auto">
+                <a href="#"     class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium transition-colors">Oh hi</a>
+
                 <a href="{{ route('l18n.index') }}"     class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium transition-colors">Languages</a>
                 <a href="{{ route('l18n.create') }}"    class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">+ Language</a>
                 <a href="{{ route('l18n.addstring') }}" class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">+ String</a>
