@@ -12,58 +12,38 @@
         @csrf
 
         {{-- Controls bar --}}
-        <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 mb-4">
-            <label for="key" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                Translation key <span class="font-normal normal-case text-gray-400">(used in templates as <code class="font-mono">__('key')</code>)</span>
-            </label>
-            <div class="flex gap-2 items-center">
-                <div class="flex-1">
-                    <input
-                        type="text"
-                        id="key"
-                        name="key"
-                        value="{{ $key ?? '' }}"
-                        {{ !$isNew ? 'readonly' : '' }}
-                        @if($isNew) @input="keyValue = $event.target.value.trim(); dirty = true" @endif
-                        :class="showError('key') ? 'border-red-400 bg-red-50 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500 {{ !$isNew ? 'bg-gray-50 text-gray-500 cursor-default' : '' }}'"
-                        class="w-full border rounded px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2"
-                    >
-                    <p x-show="showError('key')" class="mt-1 text-xs text-red-500">Translation key is required.</p>
+        <div class="sticky top-0 z-10 bg-white border border-gray-200 rounded-lg px-4 py-3 mb-4 flex gap-2 items-center justify-end shadow-sm">
+            @if(config('l18n-translator.deepl.enabled'))
+            <div class="relative" x-data="{ showHint: false }">
+                <button type="button"
+                    @click="busy ? cancelTranslation() : attemptTranslate()"
+                    @mouseenter="showHint = !busy && !canTranslate"
+                    @mouseleave="showHint = false"
+                    :disabled="!busy && !canTranslate"
+                    :class="busy ? 'bg-gray-600 hover:bg-gray-700' : 'bg-sky-600 hover:bg-sky-700'"
+                    class="px-3 py-1.5 text-sm text-white rounded
+                           disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+                    <span x-text="busy ? 'Cancel' : 'Translate'"></span>
+                </button>
+                <div x-show="showHint"
+                    class="absolute right-0 top-full mt-1 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                    <span x-text="translateHint"></span>
                 </div>
+            </div>
+            @endif
 
-                @if(config('l18n-translator.deepl.enabled'))
-                @include('l18n-translator::partials.deepl-usage')
-                <div class="relative" x-data="{ showHint: false }">
-                    <button type="button"
-                        @click="busy ? cancelTranslation() : attemptTranslate()"
-                        @mouseenter="showHint = !busy && !canTranslate"
-                        @mouseleave="showHint = false"
-                        :disabled="!busy && !canTranslate"
-                        :class="busy ? 'bg-gray-600 hover:bg-gray-700' : 'bg-sky-600 hover:bg-sky-700'"
-                        class="px-3 py-1.5 text-sm text-white rounded
-                               disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
-                        <span x-text="busy ? 'Cancel' : 'Translate'"></span>
-                    </button>
-                    <div x-show="showHint"
-                        class="absolute right-0 top-full mt-1 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                        <span x-text="translateHint"></span>
-                    </div>
-                </div>
-                @endif
-
-                <div class="relative" x-data="{ showHint: false }">
-                    <button type="submit"
-                        @mouseenter="showHint = !canSave"
-                        @mouseleave="showHint = false"
-                        :disabled="!canSave"
-                        class="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 font-medium
-                               disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
-                        Save
-                    </button>
-                    <div x-show="showHint"
-                        class="absolute right-0 top-full mt-1 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                        <span x-text="saveHint"></span>
-                    </div>
+            <div class="relative" x-data="{ showHint: false }">
+                <button type="submit"
+                    @mouseenter="showHint = !canSave"
+                    @mouseleave="showHint = false"
+                    :disabled="!canSave"
+                    class="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 font-medium
+                           disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+                    Save
+                </button>
+                <div x-show="showHint"
+                    class="absolute right-0 top-full mt-1 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                    <span x-text="saveHint"></span>
                 </div>
             </div>
         </div>
@@ -78,6 +58,27 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
+                    {{-- Key row --}}
+                    <tr class="hover:bg-gray-50/60">
+                        <td class="px-4 py-3 align-top">
+                            <div class="font-medium text-gray-800 text-sm">Translation Key</div>
+                            <div class="font-mono text-xs text-gray-400">__('key')</div>
+                        </td>
+                        <td class="px-4 py-3 align-top">
+                            <input
+                                type="text"
+                                id="key"
+                                name="key"
+                                value="{{ $key ?? '' }}"
+                                placeholder="Key used in your templates, e.g. navigation.home, login.username.placeholder ..."
+                                {{ !$isNew ? 'readonly' : '' }}
+                                @if($isNew) @input="keyValue = $event.target.value.trim(); dirty = true" @endif
+                                :class="showError('key') ? 'border-red-400 bg-red-50 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500 {{ !$isNew ? 'bg-gray-50 text-gray-500 cursor-default' : '' }}'"
+                                class="w-full border rounded px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2"
+                            >
+                            <p x-show="showError('key')" class="mt-1 text-xs text-red-500">Translation key is required.</p>
+                        </td>
+                    </tr>
                     @foreach($languageFiles as $file)
                     <tr class="hover:bg-gray-50/60">
                         <td class="px-4 py-3 align-top">
@@ -120,9 +121,6 @@
 @endsection
 
 @section('scripts')
-@once
-    @include('l18n-translator::partials.deepl')
-@endonce
 <script>
 function editStringForm() {
     return {
@@ -141,12 +139,15 @@ function editStringForm() {
 
         get keyValid()    { return this.isNew ? this.keyValue !== '' : true; },
         get sourceValid() { return this.sourceText !== ''; },
-        get canSave()     { return this.keyValid && !this.busy; },
+        get canSave()     { return this.keyValid && (!this.isNew || this.sourceValid) && !this.busy; },
         get canTranslate(){ return this.keyValid && this.sourceValid; },
 
         get saveHint() {
             if (this.busy) return 'Cannot save while a translation job is running.';
-            return !this.keyValid ? 'Translation key is required.' : '';
+            if (!this.keyValid && this.isNew && !this.sourceValid) return 'Translation key and source text are required.';
+            if (!this.keyValid) return 'Translation key is required.';
+            if (this.isNew && !this.sourceValid) return `Source text (${this.mainLang}) is required.`;
+            return '';
         },
 
         get translateHint() {
@@ -165,7 +166,7 @@ function editStringForm() {
 
         validateAndSave() {
             this.dirty = true;
-            if (!this.keyValid) return;
+            if (!this.keyValid || (this.isNew && !this.sourceValid)) return;
             document.getElementById('editstring-form').submit();
         },
 

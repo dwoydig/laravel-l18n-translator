@@ -72,6 +72,8 @@ document.addEventListener('alpine:init', () => {
         loaded: false,
         selectedChars: 0,
         refreshTimer: null,
+        _cacheKey: 'l18n_deepl_usage',
+        _cacheTtl: 60 * 60 * 1000, // 1 hour
 
         get percent() {
             return this.limit ? Math.min(100, Math.round((this.count / this.limit) * 100)) : 0;
@@ -88,7 +90,32 @@ document.addEventListener('alpine:init', () => {
             if (this.percent >= 90) return 'bg-amber-500';
             return 'bg-sky-600';
         },
-        async load() {
+
+        _readCache() {
+            try {
+                const raw = localStorage.getItem(this._cacheKey);
+                if (!raw) return null;
+                const { count, limit, timestamp } = JSON.parse(raw);
+                if (Date.now() - timestamp > this._cacheTtl) return null;
+                return { count, limit };
+            } catch { return null; }
+        },
+        _writeCache(count, limit) {
+            try {
+                localStorage.setItem(this._cacheKey, JSON.stringify({ count, limit, timestamp: Date.now() }));
+            } catch {}
+        },
+
+        async load(force = false) {
+            if (!force) {
+                const cached = this._readCache();
+                if (cached) {
+                    this.count = cached.count;
+                    this.limit = cached.limit;
+                    this.loaded = true;
+                    return;
+                }
+            }
             try {
                 const res = await fetch('{{ route('l18n.deepl.usage') }}', {
                     headers: { 'Accept': 'application/json' },
@@ -98,13 +125,12 @@ document.addEventListener('alpine:init', () => {
                 this.count = data.character_count ?? 0;
                 this.limit = data.character_limit ?? 0;
                 this.loaded = true;
-            } catch (err) {
-                // usage display is non-critical, fail silently
-            }
+                this._writeCache(this.count, this.limit);
+            } catch {}
         },
         scheduleRefresh() {
             clearTimeout(this.refreshTimer);
-            this.refreshTimer = setTimeout(() => this.load(), 800);
+            this.refreshTimer = setTimeout(() => this.load(true), 800);
         },
     });
 });

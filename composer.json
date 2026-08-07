@@ -27,7 +27,10 @@
         "laravel": {
             "providers": [
                 "Dwoydig\\L18nTranslator\\TranslationServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "DeepL": "Dwoydig\\L18nTranslator\\Facades\\DeepL"
+            }
         }
     },
     "minimum-stability": "dev",

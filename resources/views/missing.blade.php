@@ -17,7 +17,7 @@
     <div x-data="missingEditor()" x-effect="$store.deeplUsage.selectedChars = selectedChars" class="space-y-3">
 
         {{-- Controls bar --}}
-        <div class="bg-white border border-gray-200 rounded-lg px-3 py-2.5 flex flex-wrap gap-2 items-center">
+        <div class="sticky top-0 z-10 bg-white border border-gray-200 rounded-lg px-3 py-2.5 flex flex-wrap gap-2 items-center shadow-sm">
 
             {{-- Search --}}
             <input
@@ -30,7 +30,6 @@
 
             {{-- DeepL --}}
             @if(config('l18n-translator.deepl.enabled'))
-            @include('l18n-translator::partials.deepl-usage')
             <div class="relative" x-data="{ showHint: false }">
                 <button type="button"
                     @click="busy ? cancelTranslation() : translateSelected()"
@@ -72,20 +71,7 @@
                                 class="rounded border-gray-300 text-blue-600 cursor-pointer">
                         </th>
                         <th class="px-4 py-2.5 font-medium text-gray-600 w-1/3">Key</th>
-                        <th class="px-4 py-2.5 font-medium text-gray-600">
-                            <div class="flex items-center justify-between">
-                                <span>Translation</span>
-                                <button type="button"
-                                    @click="showOnlySelected = !showOnlySelected"
-                                    :disabled="!showOnlySelected && selectedCount === 0"
-                                    :class="showOnlySelected
-                                        ? 'bg-blue-100 text-blue-700 border-blue-200'
-                                        : 'text-gray-400 border-gray-200 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed'"
-                                    class="text-xs font-normal px-2 py-0.5 rounded border transition-colors">
-                                    <span x-text="showOnlySelected ? 'Show all' : 'Selected only'"></span>
-                                </button>
-                            </div>
-                        </th>
+                        <th class="px-4 py-2.5 font-medium text-gray-600">Translation</th>
                     </tr>
                 </thead>
                 <tbody x-ref="tbody" class="divide-y divide-gray-100">
@@ -143,10 +129,6 @@
 @endsection
 
 @section('scripts')
-@once
-    @include('l18n-translator::partials.deepl')
-    @include('l18n-translator::partials.row-selection')
-@endonce
 <script>
 function missingEditor() {
     return withMixins({

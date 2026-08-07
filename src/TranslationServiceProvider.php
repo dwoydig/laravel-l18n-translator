@@ -4,16 +4,26 @@ namespace Dwoydig\L18nTranslator;
 
 use Dwoydig\L18nTranslator\Http\Controllers\DeeplController;
 use Dwoydig\L18nTranslator\Http\Controllers\TranslationController;
+use Dwoydig\L18nTranslator\Services\DeeplService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class TranslationServiceProvider extends ServiceProvider
 {
+    /**
+     * Merges the package config into the application's config repository
+     * and registers the DeeplService singleton.
+     */
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/l18n-translator.php', 'l18n-translator');
+
+        $this->app->singleton(DeeplService::class);
     }
 
+    /**
+     * Loads views, registers routes, and publishes config and view stubs.
+     */
     public function boot(): void
     {
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'l18n-translator');
@@ -29,6 +39,10 @@ class TranslationServiceProvider extends ServiceProvider
         ], 'l18n-translator-views');
     }
 
+    /**
+     * Registers all package routes under the configured prefix and middleware group.
+     * Prefix and middleware default to `admin/translations` and `['web', 'auth']` respectively.
+     */
     protected function registerRoutes(): void
     {
         Route::group([

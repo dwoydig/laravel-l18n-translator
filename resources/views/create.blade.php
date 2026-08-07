@@ -62,6 +62,25 @@
         </button>
     </form>
 </div>
+
+<h2 class="text-base font-semibold text-gray-700 mt-8 mb-3">Existing languages</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    @foreach($languageFiles as $file)
+    <a href="{{ route('l18n.show', $file->filename) }}"
+       class="{{ $file->filename === $mainLanguage ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200' }} rounded-lg border p-4 flex items-center gap-3 hover:border-blue-400 hover:shadow-sm transition-all">
+        <span class="text-2xl leading-none">{{ $file->flag }}</span>
+        <div class="min-w-0 flex-1">
+            <div class="font-medium text-gray-900 flex items-center gap-2">
+                {{ $file->name }}
+                @if($file->filename === $mainLanguage)
+                    <span class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">source</span>
+                @endif
+            </div>
+            <div class="text-xs text-gray-400 font-mono mt-0.5">{{ $file->basename }}</div>
+        </div>
+    </a>
+    @endforeach
+</div>
 @endsection
 
 @section('scripts')
