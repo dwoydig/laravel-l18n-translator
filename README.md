@@ -14,13 +14,20 @@ Optional [DeepL](https://www.deepl.com) auto-translation included. The UI is bui
 
 All installed language files at a glance, with flag emoji and locale name resolved automatically from the ICU library. Click any language to open its editor.
 
-![Languages overview](docs/screenshots/languages.png)
+![Languages overview](docs/screenshots/all_languages.png)
 
 ### Coverage dashboard
 
 Shows translation completeness for every language at a glance. Each card displays a block strip (green = translated, red = missing), the exact counts for translated, missing, and orphaned keys, and the percentage complete. Click a card to open the editor pre-filtered to missing keys only.
 
 ![Coverage dashboard](docs/screenshots/coverage.png)
+
+
+### Missing translations
+
+List of all missing translations. Strings that exist in the main language, but are missing in any translation file.
+
+![Missing translations](docs/screenshots/missing_translations.png)
 
 ### Per-language editor
 
@@ -32,13 +39,13 @@ Side-by-side view of the source language and the translation. Filter by key or v
 
 Search for a key and edit its value in every language file on one screen. Useful for fixing a typo or updating a string without having to switch between language editors. DeepL can translate from the source language for each target with one click.
 
-![Edit string](docs/screenshots/edit_string.png)
+![Edit language](docs/screenshots/edit_string.png)
 
-### Create a new language
+### Shows Deepl translation budget in menu
 
-Searchable picker covering every locale known to the ICU library. Selecting a locale creates a new `.json` file pre-filled with all keys from the source language, ready to translate.
+When the Deepl integration is set up, it shows your remaining translation budget (in chars), as well as the expected usage for the currently selected strings.
 
-![Create language](docs/screenshots/create_language.png)
+![Edit language](docs/screenshots/missing_translations_deepl.png)
 
 ---
 
@@ -102,7 +109,7 @@ return [
         'enabled'     => (bool) env('DEEPL_AUTH_KEY'),
         'auth_key'    => env('DEEPL_AUTH_KEY'),
         'endpoint'    => env('DEEPL_ENDPOINT', 'https://api.deepl.com/v2/translate'),
-        'formality'   => 'prefer_less', // prefer_less | prefer_more | default
+        'formality'   => 'prefer_less', // default | more | less | prefer_more | prefer_less — see https://developers.deepl.com/api-reference/translate/request-translation
         'context'     => '',            // optional global translation context hint
         'concurrency' => 5,             // parallel DeepL requests per batch
     ],

@@ -13,6 +13,10 @@ function keySelectionMixin() {
     return {
         selected: new Set(),
 
+        get selectedCount() {
+            return this.selected.size;
+        },
+
         toggleRow(key) {
             const next = new Set(this.selected);
             next.has(key) ? next.delete(key) : next.add(key);

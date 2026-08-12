@@ -11,11 +11,12 @@
     <div x-data="translationEditor()" x-effect="$store.deeplUsage.selectedChars = selectedChars" class="space-y-3">
 
         {{-- Controls bar --}}
-        <div class="bg-white border border-gray-200 rounded-lg px-3 py-2.5 flex flex-wrap gap-2 items-center">
+        <div class="sticky top-0 z-10 bg-white border border-gray-200 rounded-lg px-3 py-2.5 flex flex-wrap gap-2 items-center shadow-sm">
 
             {{-- Search --}}
             <input
                 type="text"
+                x-ref="filterInput"
                 @input.debounce.250ms="search = $event.target.value"
                 placeholder="Filter keys or values…"
                 class="flex-1 min-w-48 border border-gray-300 rounded px-3 py-1.5 text-sm
@@ -24,7 +25,6 @@
 
             {{-- DeepL --}}
             @if(config('l18n-translator.deepl.enabled'))
-            @include('l18n-translator::partials.deepl-usage')
             <div class="relative" x-data="{ showHint: false }">
                 <button type="button"
                     @click="busy ? cancelTranslation() : translateSelected()"
@@ -60,35 +60,27 @@
                 <thead class="bg-gray-50 border-b border-gray-200 text-left">
                     <tr>
                         <th class="w-8 px-3 py-2.5">
-                            <div class="relative" x-data="{ open: false }">
-                                <button type="button" @click="open = !open"
-                                    class="w-5 h-5 rounded border border-gray-300 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-500"
-                                    title="Select…">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                </button>
-                                <div x-show="open" @click.outside="open = false"
-                                    class="absolute left-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded shadow-md text-sm w-28">
-                                    <button type="button" @click="selectAll(); open = false"
-                                        class="w-full text-left px-3 py-1.5 hover:bg-gray-50">All</button>
-                                    <button type="button" @click="selectNone(); open = false"
-                                        class="w-full text-left px-3 py-1.5 hover:bg-gray-50">None</button>
-                                    <button type="button" @click="selectMissing(); open = false"
-                                        class="w-full text-left px-3 py-1.5 hover:bg-gray-50">Missing</button>
-                                </div>
-                            </div>
+                            <input type="checkbox"
+                                x-effect="$el.indeterminate = selectedCount > 0 && selectedCount < visibleRows().length; $el.checked = selectedCount > 0 && selectedCount === visibleRows().length"
+                                @click="selectedCount === visibleRows().length ? selectNone() : selectAll()"
+                                class="rounded border-gray-300 text-blue-600 cursor-pointer">
                         </th>
                         <th class="px-4 py-2.5 font-medium text-gray-600 w-1/3">Key</th>
                         <th class="px-4 py-2.5 font-medium text-gray-600">
+                            @php $langFile = $languageFiles->firstWhere('filename', $lang); @endphp
                             <div class="flex items-center justify-between">
-                                <span>{{ $lang }}</span>
+                                <span class="flex items-center gap-2">
+                                    <span class="text-xl leading-none">{{ $langFile?->flag }}</span>
+                                    <span>{{ $langFile?->name ?? $lang }}</span>
+                                    <span class="font-normal text-gray-400 font-mono text-xs">{{ $langFile?->basename }}</span>
+                                </span>
                                 <button type="button"
-                                    @click="showOnlySelected = !showOnlySelected"
-                                    :disabled="!showOnlySelected && selectedCount === 0"
+                                    @click="showOnlySelected ? (showOnlySelected = false) : selectMissing()"
                                     :class="showOnlySelected
                                         ? 'bg-blue-100 text-blue-700 border-blue-200'
-                                        : 'text-gray-400 border-gray-200 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed'"
+                                        : 'text-gray-400 border-gray-200 hover:text-gray-600'"
                                     class="text-xs font-normal px-2 py-0.5 rounded border transition-colors">
-                                    <span x-text="showOnlySelected ? 'Show all' : 'Selected only'"></span>
+                                    <span x-text="showOnlySelected ? 'Show all' : 'Filter missing'"></span>
                                 </button>
                             </div>
                         </th>
@@ -125,6 +117,7 @@
                                 name="dict[{{ $entry['key'] }}]"
                                 rows="2"
                                 dir="{{ $isRtl ? 'rtl' : 'ltr' }}"
+                                autocomplete="off"
                                 class="w-full border border-gray-200 rounded px-2 py-1 text-sm resize-y
                                        focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                             >{{ html_entity_decode($entry['translation'] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</textarea>
@@ -150,27 +143,38 @@
 
     <div class="bg-white border border-amber-300 rounded-lg overflow-hidden">
 
+        @php
+            $langName = $languageFiles->firstWhere('filename', $lang)?->name ?? $lang;
+            $mainName = $languageFiles->firstWhere('filename', $mainLanguage)?->name ?? $mainLanguage;
+        @endphp
         {{-- Header --}}
         <div class="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center gap-3">
             <span class="text-sm font-medium text-amber-800">
                 {{ count($orphaned) }} orphaned {{ count($orphaned) === 1 ? 'key' : 'keys' }}
-                — present in <code class="font-mono">{{ $lang }}</code> but missing in <code class="font-mono">{{ $mainLanguage }}</code>
+                — present in {{ $langName }} but missing in {{ $mainName }}
             </span>
-            <div class="ml-auto">
-                <div class="relative" x-data="{ showHint: false }">
+            <div class="ml-auto flex gap-2" x-data="{ showHint: false }">
+                <div class="relative">
                     <button type="submit"
+                        formaction="{{ route('l18n.orphans.remove') }}"
                         @mouseenter="showHint = selected.size === 0"
                         @mouseleave="showHint = false"
                         :disabled="selected.size === 0"
-                        class="px-3 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700
+                        class="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700
                                disabled:opacity-40 disabled:cursor-not-allowed">
-                        Add selected to {{ $mainLanguage }}
+                        Remove selected
                     </button>
                     <div x-show="showHint"
                         class="absolute right-0 top-full mt-1 z-10 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
                         Select at least one key.
                     </div>
                 </div>
+                <button type="submit"
+                    :disabled="selected.size === 0"
+                    class="px-3 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700
+                           disabled:opacity-40 disabled:cursor-not-allowed">
+                    Add selected to {{ $mainName }}
+                </button>
             </div>
         </div>
 
@@ -179,23 +183,13 @@
             <thead class="bg-gray-50 border-b border-gray-200 text-left">
                 <tr>
                     <th class="w-8 px-3 py-2">
-                        <div class="relative" x-data="{ open: false }">
-                            <button type="button" @click="open = !open"
-                                class="w-5 h-5 rounded border border-gray-300 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-500"
-                                title="Select…">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                            </button>
-                            <div x-show="open" @click.outside="open = false"
-                                class="absolute left-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded shadow-md text-sm w-28">
-                                <button type="button" @click="selectAll(); open = false"
-                                    class="w-full text-left px-3 py-1.5 hover:bg-gray-50">All</button>
-                                <button type="button" @click="selectNone(); open = false"
-                                    class="w-full text-left px-3 py-1.5 hover:bg-gray-50">None</button>
-                            </div>
-                        </div>
+                        <input type="checkbox"
+                            x-effect="$el.indeterminate = selected.size > 0 && selected.size < allKeys.length; $el.checked = selected.size > 0 && selected.size === allKeys.length"
+                            @click="selected.size === allKeys.length ? selectNone() : selectAll()"
+                            class="rounded border-gray-300 text-amber-600 cursor-pointer">
                     </th>
                     <th class="px-4 py-2 font-medium text-gray-600 w-1/3">Key</th>
-                    <th class="px-4 py-2 font-medium text-gray-600">Value in {{ $lang }}</th>
+                    <th class="px-4 py-2 font-medium text-gray-600">Value in {{ $langName }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -223,10 +217,6 @@
 @endsection
 
 @section('scripts')
-@once
-    @include('l18n-translator::partials.deepl')
-    @include('l18n-translator::partials.row-selection')
-@endonce
 <script>
 function translationEditor() {
     return withMixins({
@@ -238,6 +228,20 @@ function translationEditor() {
             if (new URLSearchParams(location.search).get('filter') === 'missing') {
                 this.$nextTick(() => this.selectMissing());
             }
+            document.addEventListener('l18n:key-selected', (e) => {
+                e.preventDefault();
+                this.search = '';
+                this.showOnlySelected = false;
+                if (this.$refs.filterInput) this.$refs.filterInput.value = '';
+                this.$nextTick(() => {
+                    const row = [...(this.$refs.tbody?.querySelectorAll('tr') ?? [])]
+                        .find(r => r.dataset.key === e.detail);
+                    if (!row) return;
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.classList.add('key-flash');
+                    row.addEventListener('animationend', () => row.classList.remove('key-flash'), { once: true });
+                });
+            });
         },
 
         rowClass(el) {

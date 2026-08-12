@@ -2,6 +2,7 @@
 
 namespace Dwoydig\L18nTranslator;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 
 class TranslationManager
@@ -11,6 +12,10 @@ class TranslationManager
     private string $translationLanguageIso;
     private array $translationLanguage = [];
 
+    /**
+     * @param  string       $languageIso      BCP-47 locale to load as the translation target.
+     * @param  string|null  $mainLanguageIso  Override for the source language; defaults to `l18n-translator.main_language`.
+     */
     public function __construct(string $languageIso, ?string $mainLanguageIso = null)
     {
         $this->mainLanguageIso = strtolower($mainLanguageIso ?? config('l18n-translator.main_language', 'en'));
@@ -19,21 +24,41 @@ class TranslationManager
         $this->translationLanguage = static::loadJson($this->translationLanguageIso);
     }
 
+    /**
+     * Returns the ISO code of the configured source/main language (e.g. "en").
+     */
     public function getMainLanguageIso(): string
     {
         return $this->mainLanguageIso;
     }
 
+    /**
+     * Returns the full key→value map of the source language.
+     *
+     * @return array<string, string>
+     */
     public function getMainLanguage(): array
     {
         return $this->mainLanguage;
     }
 
+    /**
+     * Returns the full key→value map of the target translation language.
+     *
+     * @return array<string, string>
+     */
     public function getTranslationLanguage(): array
     {
         return $this->translationLanguage;
     }
 
+    /**
+     * Reads and JSON-decodes a language file from `resources/lang/{iso}.json`.
+     * Returns an empty array when the file does not exist or contains invalid JSON.
+     *
+     * @param  string  $isoLanguage  BCP-47 locale code (e.g. "de", "en-GB").
+     * @return array<string, string>
+     */
     public static function loadJson(string $isoLanguage): array
     {
         $path = resource_path('lang/' . $isoLanguage . '.json');
@@ -44,6 +69,11 @@ class TranslationManager
         return is_array($decoded) ? $decoded : [];
     }
 
+    /**
+     * Writes the current translation language data back to its JSON file.
+     *
+     * @return bool  True on success, false if the file could not be written.
+     */
     public function saveTranslationFile(): bool
     {
         $path = resource_path('lang/' . $this->translationLanguageIso . '.json');
@@ -63,8 +93,12 @@ class TranslationManager
     }
 
     /**
-     * Merge main and target language arrays into a list of arrays
-     * with keys: 'key', 'original', 'translation' for easy iteration in views.
+     * Merge main and target language arrays into a flat list suitable for view iteration.
+     * Each entry contains 'key', 'original' (source text), and 'translation' (target text or null).
+     *
+     * @param  array<string, string>  $main    Source language key→value map.
+     * @param  array<string, string>  $target  Target language key→value map.
+     * @return array<int, array{key: string, original: string, translation: string|null}>
      */
     public static function mergeTranslations(array $main, array $target): array
     {
@@ -79,13 +113,34 @@ class TranslationManager
         return $result;
     }
 
+    /**
+     * Sets or overwrites a single translation key in the in-memory target language array.
+     * Call saveTranslationFile() afterwards to persist.
+     *
+     * @param  string  $key    Translation key.
+     * @param  string  $value  Translated string.
+     */
     public function setTranslation(string $key, string $value): void
     {
         $this->translationLanguage[$key] = $value;
     }
 
     /**
-     * Return the current value of $key across all configured languages.
+     * Removes a single key from the in-memory target language array.
+     * Call saveTranslationFile() afterwards to persist.
+     *
+     * @param  string  $key  Translation key to remove.
+     */
+    public function removeTranslation(string $key): void
+    {
+        unset($this->translationLanguage[$key]);
+    }
+
+    /**
+     * Returns the current value of a single key across all language files.
+     *
+     * @param  string  $key  Translation key to look up.
+     * @return array<string, string|null>  Locale → value map; null when the key is absent.
      */
     public function getAllForKey(string $key): array
     {
@@ -97,7 +152,14 @@ class TranslationManager
         return $translations;
     }
 
-    public function getLanguageFiles(): \Illuminate\Support\Collection
+    /**
+     * Scans `resources/lang/*.json` and returns a collection of language file objects.
+     * Each object exposes: basename, filename, extension, name, flag, rtl.
+     * The main/source language is always sorted first.
+     *
+     * @return Collection<int, object>
+     */
+    public function getLanguageFiles(): Collection
     {
         $main = $this->mainLanguageIso;
         $files = collect();
@@ -115,6 +177,12 @@ class TranslationManager
         return $files->sortBy(fn($f) => $f->filename === $main ? 0 : 1);
     }
 
+    /**
+     * Resolves a BCP-47 locale code to a human-readable English name via the intl extension.
+     * Falls back to the raw locale string when intl is unavailable or returns no display name.
+     *
+     * @param  string  $locale  BCP-47 locale code (e.g. "de", "en-AU").
+     */
     public static function resolveLocaleName(string $locale): string
     {
         if (class_exists(\Locale::class)) {
@@ -130,6 +198,8 @@ class TranslationManager
      * Convert a locale code to a Unicode flag emoji.
      * Uses the country suffix when present (en-AU → 🇦🇺),
      * otherwise falls back to a language-to-country map (de → 🇩🇪).
+     *
+     * @param  string  $locale  BCP-47 locale code.
      */
     public static function localeToFlag(string $locale): string
     {
@@ -158,6 +228,12 @@ class TranslationManager
         'vi' => 'VN', 'id' => 'ID', 'ms' => 'MY', 'ca' => 'ES',
     ];
 
+    /**
+     * Returns true when the given locale is written right-to-left.
+     * Uses the intl script tag when available; falls back to a hardcoded primary-language list.
+     *
+     * @param  string  $locale  BCP-47 locale code.
+     */
     public static function isRtl(string $locale): bool
     {
         // Try to get the script tag from the locale (works for explicit tags like fa_Arab, sr_Cyrl)
@@ -176,6 +252,12 @@ class TranslationManager
         return in_array($primary, $rtlPrimary, true);
     }
 
+    /**
+     * Returns all ICU locales known to the intl extension as a BCP-47 → display name map,
+     * sorted alphabetically by display name. Returns an empty array if intl is unavailable.
+     *
+     * @return array<string, string>
+     */
     public static function getAllLocales(): array
     {
         if (!class_exists(\ResourceBundle::class)) {
@@ -192,6 +274,11 @@ class TranslationManager
         return $locales;
     }
 
+    /**
+     * Returns keys that exist in the target language file but are absent from the main language.
+     *
+     * @return array<string, string>  Key → value map of orphaned entries.
+     */
     public function orphanedTranslations(): array
     {
         $orphaned = [];
@@ -203,6 +290,11 @@ class TranslationManager
         return $orphaned;
     }
 
+    /**
+     * Returns keys that exist in the main language but are absent or empty in the target language.
+     *
+     * @return array<string, string>  Key → source value map of missing entries.
+     */
     public function missingTranslations(): array
     {
         $missing = [];

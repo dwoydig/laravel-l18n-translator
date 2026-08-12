@@ -7,20 +7,139 @@
     <title>@yield('title', 'Translations') - L18n Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        @keyframes key-flash {
+            0%   { background-color: #dbeafe; }
+            60%  { background-color: #dbeafe; }
+            100% { background-color: transparent; }
+        }
+        .key-flash { animation: key-flash 1.5s ease-out forwards; }
+    </style>
 </head>
 <body class="min-h-full text-gray-900">
 
     <header class="bg-white border-b border-gray-200 shadow-sm">
-        <div class="max-w-screen-xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
-            <a href="{{ route('l18n.index') }}" class="font-semibold text-gray-800 hover:text-gray-600 tracking-tight">
+        <div class="max-w-screen-xl mx-auto px-4 sm:px-6 flex items-center gap-4 h-14">
+            <a href="{{ route('l18n.index') }}" class="font-semibold text-gray-800 hover:text-gray-600 tracking-tight shrink-0">
                 🌍 L18n Manager
             </a>
-            <nav class="flex items-center gap-2 text-sm">
+
+            {{-- Key search --}}
+            <div class="flex-1 max-w-sm relative"
+                 x-data="{
+                    query: '',
+                    keys: [],
+                    open: false,
+                    loading: false,
+                    highlighted: -1,
+                    get filtered() {
+                        if (this.query.trim() === '') return [];
+                        const q = this.query.toLowerCase();
+                        return this.keys.filter(k => k.toLowerCase().includes(q)).slice(0, 20);
+                    },
+                    async loadKeys() {
+                        if (this.keys.length > 0) return;
+                        this.loading = true;
+                        try {
+                            const r = await fetch('{{ route('l18n.keys') }}');
+                            this.keys = await r.json();
+                        } finally {
+                            this.loading = false;
+                        }
+                    },
+                    select(key) {
+                        const e = new CustomEvent('l18n:key-selected', { detail: key, bubbles: true, cancelable: true });
+                        if (document.dispatchEvent(e)) {
+                            window.location.href = '{{ route('l18n.editstrings') }}?key=' + encodeURIComponent(key);
+                        }
+                        this.open = false;
+                        this.query = '';
+                        this.highlighted = -1;
+                    },
+                    onKeydown(e) {
+                        if (!this.open) return;
+                        if (e.key === 'ArrowDown')  { e.preventDefault(); this.highlighted = Math.min(this.highlighted + 1, this.filtered.length - 1); }
+                        if (e.key === 'ArrowUp')    { e.preventDefault(); this.highlighted = Math.max(this.highlighted - 1, 0); }
+                        if (e.key === 'Enter' && this.highlighted >= 0) { e.preventDefault(); this.select(this.filtered[this.highlighted]); }
+                        if (e.key === 'Escape')     { this.open = false; this.highlighted = -1; }
+                    },
+                 }"
+                 @click.outside="open = false; highlighted = -1"
+            >
+                <div class="relative">
+                    <input
+                        type="text"
+                        placeholder="Search key…"
+                        autocomplete="off"
+                        x-model="query"
+                        @focus="loadKeys(); open = query.trim() !== ''"
+                        @input="open = query.trim() !== ''; highlighted = -1"
+                        @keydown="onKeydown($event)"
+                        class="w-full border border-gray-300 rounded-md pl-8 pr-3 py-1.5 text-sm font-mono
+                               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                    <svg class="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+                    </svg>
+                    <svg x-show="loading" class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                </div>
+
+                <ul x-show="open && filtered.length > 0"
+                    x-transition
+                    class="absolute z-50 mt-1 w-full max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg text-sm font-mono">
+                    <template x-for="(key, i) in filtered" :key="key">
+                        <li @click="select(key)"
+                            @mouseenter="highlighted = i"
+                            :class="highlighted === i ? 'bg-blue-50 text-blue-900' : 'text-gray-800 hover:bg-gray-50'"
+                            class="px-3 py-1.5 cursor-pointer truncate"
+                            x-text="key">
+                        </li>
+                    </template>
+                </ul>
+            </div>
+            <nav class="flex items-center gap-2 text-sm shrink-0 ml-auto">
                 <a href="{{ route('l18n.index') }}"     class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium transition-colors">Languages</a>
-                <a href="{{ route('l18n.create') }}"    class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">+ Language</a>
                 <a href="{{ route('l18n.addstring') }}" class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">+ String</a>
                 <a href="{{ route('l18n.coverage') }}"  class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Coverage</a>
-                <a href="{{ route('l18n.missing') }}"  class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Missing</a>
+                <a href="{{ route('l18n.missing') }}"   class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Missing</a>
+
+                @if(config('l18n-translator.deepl.enabled'))
+                <div class="relative shrink-0" x-data="{ open: false }" x-init="$store.deeplUsage.load()" @click.outside="open = false">
+                    <button type="button"
+                        @click="open = !open"
+                        class="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                        <span class="w-2 h-2 rounded-full flex-shrink-0"
+                              :class="$store.deeplUsage.loaded ? $store.deeplUsage.barColor : 'bg-gray-300'"></span>
+                        <span>DeepL <span x-text="$store.deeplUsage.loaded ? $store.deeplUsage.percent + '%' : '…'"></span></span>
+                    </button>
+                    <div x-show="open" x-transition
+                         class="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 text-xs text-gray-500">
+                        <div class="flex justify-between mb-1.5 gap-2">
+                            <span class="font-medium text-gray-700">DeepL Usage</span>
+                            <span :class="$store.deeplUsage.overBudget ? 'text-red-600 font-semibold' : ''"
+                                x-text="$store.deeplUsage.overBudget ? 'over budget' : $store.deeplUsage.percent + '%'"></span>
+                        </div>
+                        <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden relative">
+                            <div class="h-full absolute inset-y-0 left-0 rounded-full transition-all"
+                                :class="$store.deeplUsage.barColor"
+                                :style="`width: ${$store.deeplUsage.percent}%`"></div>
+                            <div x-show="$store.deeplUsage.selectedChars > 0"
+                                class="h-full absolute inset-y-0 transition-all"
+                                :class="$store.deeplUsage.overBudget ? 'bg-red-400' : 'bg-purple-400'"
+                                :style="`left: ${$store.deeplUsage.percent}%; width: ${$store.deeplUsage.selectedPercent}%`"></div>
+                        </div>
+                        <div class="mt-1.5 flex justify-between whitespace-nowrap gap-2">
+                            <span x-text="`${$store.deeplUsage.count.toLocaleString()} / ${$store.deeplUsage.limit.toLocaleString()} chars`"></span>
+                            <span x-show="$store.deeplUsage.selectedChars > 0"
+                                :class="$store.deeplUsage.overBudget ? 'text-red-600 font-semibold' : 'text-purple-600'"
+                                x-text="`+${$store.deeplUsage.selectedChars.toLocaleString()}`"></span>
+                        </div>
+                    </div>
+                </div>
+                @endif
             </nav>
         </div>
     </header>
@@ -42,6 +161,41 @@
         @yield('content')
     </main>
 
+    @include('l18n-translator::partials.row-selection')
+    @if(config('l18n-translator.deepl.enabled'))
+    @include('l18n-translator::partials.deepl')
+    @endif
     @yield('scripts')
+    <script>
+    (function () {
+        var STORAGE_KEY = 'l18n_textarea_height';
+
+        function applyHeight(h) {
+            document.querySelectorAll('table textarea').forEach(function (ta) {
+                ta.style.height = h + 'px';
+            });
+        }
+
+        var saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+        if (saved > 0) {
+            applyHeight(saved);
+            document.addEventListener('alpine:initialized', function () { applyHeight(saved); });
+        }
+
+        document.addEventListener('mousedown', function (e) {
+            var ta = e.target.closest('table textarea');
+            if (!ta) return;
+            var startHeight = ta.offsetHeight;
+            function onMouseUp() {
+                document.removeEventListener('mouseup', onMouseUp);
+                var newHeight = ta.offsetHeight;
+                if (newHeight === startHeight) return;
+                localStorage.setItem(STORAGE_KEY, newHeight);
+                applyHeight(newHeight);
+            }
+            document.addEventListener('mouseup', onMouseUp);
+        });
+    }());
+    </script>
 </body>
 </html>
