@@ -18,6 +18,13 @@ return [
     'main_language' => 'en',
 
     /*
+     * Absolute path to the directory containing the `{locale}.json` translation files.
+     * Override via L18N_LANG_PATH in your .env if your language files don't live in
+     * the default Laravel location (resources/lang).
+     */
+    'lang_path' => env('L18N_LANG_PATH', resource_path('lang')),
+
+    /*
      * Override the layout the views extend.
      * null  = use the package's built-in standalone layout (Tailwind + Alpine CDN).
      * string = e.g. 'layouts.admin' — your own layout must yield 'content' and 'scripts'.
