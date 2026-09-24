@@ -7,14 +7,24 @@
     <title>@yield('title', 'Translations') - L18n Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <style>
-        @keyframes key-flash {
-            0%   { background-color: #dbeafe; }
-            60%  { background-color: #dbeafe; }
-            100% { background-color: transparent; }
-        }
-        .key-flash { animation: key-flash 1.5s ease-out forwards; }
-    </style>
+    <script>
+        tailwind.config = {
+            safelist: ['animate-key-flash'],
+            theme: {
+                extend: {
+                    keyframes: {
+                        'key-flash': {
+                            '0%, 60%': { backgroundColor: '#dbeafe' }, // blue-100
+                            '100%': { backgroundColor: 'transparent' },
+                        },
+                    },
+                    animation: {
+                        'key-flash': 'key-flash 1.5s ease-out forwards',
+                    },
+                },
+            },
+        };
+    </script>
 </head>
 <body class="min-h-full text-gray-900">
 
@@ -117,26 +127,7 @@
                     </button>
                     <div x-show="open" x-transition
                          class="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 text-xs text-gray-500">
-                        <div class="flex justify-between mb-1.5 gap-2">
-                            <span class="font-medium text-gray-700">DeepL Usage</span>
-                            <span :class="$store.deeplUsage.overBudget ? 'text-red-600 font-semibold' : ''"
-                                x-text="$store.deeplUsage.overBudget ? 'over budget' : $store.deeplUsage.percent + '%'"></span>
-                        </div>
-                        <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden relative">
-                            <div class="h-full absolute inset-y-0 left-0 rounded-full transition-all"
-                                :class="$store.deeplUsage.barColor"
-                                :style="`width: ${$store.deeplUsage.percent}%`"></div>
-                            <div x-show="$store.deeplUsage.selectedChars > 0"
-                                class="h-full absolute inset-y-0 transition-all"
-                                :class="$store.deeplUsage.overBudget ? 'bg-red-400' : 'bg-purple-400'"
-                                :style="`left: ${$store.deeplUsage.percent}%; width: ${$store.deeplUsage.selectedPercent}%`"></div>
-                        </div>
-                        <div class="mt-1.5 flex justify-between whitespace-nowrap gap-2">
-                            <span x-text="`${$store.deeplUsage.count.toLocaleString()} / ${$store.deeplUsage.limit.toLocaleString()} chars`"></span>
-                            <span x-show="$store.deeplUsage.selectedChars > 0"
-                                :class="$store.deeplUsage.overBudget ? 'text-red-600 font-semibold' : 'text-purple-600'"
-                                x-text="`+${$store.deeplUsage.selectedChars.toLocaleString()}`"></span>
-                        </div>
+                        @include('l18n-translator::partials.deepl-usage')
                     </div>
                 </div>
                 @endif

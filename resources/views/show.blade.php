@@ -238,8 +238,8 @@ function translationEditor() {
                         .find(r => r.dataset.key === e.detail);
                     if (!row) return;
                     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    row.classList.add('key-flash');
-                    row.addEventListener('animationend', () => row.classList.remove('key-flash'), { once: true });
+                    row.classList.add('animate-key-flash');
+                    row.addEventListener('animationend', () => row.classList.remove('animate-key-flash'), { once: true });
                 });
             });
         },
