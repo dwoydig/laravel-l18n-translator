@@ -1,0 +1,10 @@
+{
+    "private": true,
+    "description": "Browser tests for dwoydig/l18n-translator (the package itself has no frontend build step).",
+    "scripts": {
+        "test:e2e": "playwright test"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.63.0"
+    }
+}
