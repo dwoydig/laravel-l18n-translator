@@ -70,6 +70,7 @@
                                 @click="selectedCount === visibleRows().length ? selectNone() : selectAll()"
                                 class="rounded border-gray-300 text-blue-600 cursor-pointer">
                         </th>
+                        <th class="px-4 py-2.5 font-medium text-gray-600 w-28">Origin</th>
                         <th class="px-4 py-2.5 font-medium text-gray-600 w-1/3">Key</th>
                         <th class="px-4 py-2.5 font-medium text-gray-600">Translation</th>
                     </tr>
@@ -80,7 +81,9 @@
                         x-show="isVisible($el)"
                         @click="if (!$event.target.closest('textarea, a')) toggleRow($el.dataset.key)"
                         :class="rowClass($el)"
-                        data-key="{{ $entry['lang'] }}::{{ $entry['key'] }}"
+                        data-key="{{ $entry['lang'] }}::{{ $entry['id'] }}"
+                        data-label="{{ $entry['label'] }}"
+                        data-origin="{{ $entry['origin'] }}"
                         data-lang="{{ $entry['lang'] }}"
                         data-original="{{ html_entity_decode($entry['original'] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8') }}"
                         data-langname="{{ $entry['langName'] }}"
@@ -91,11 +94,14 @@
                                 @click.stop="toggleRow($el.closest('tr').dataset.key)"
                                 class="mt-1 rounded border-gray-300 text-blue-600 cursor-pointer">
                         </td>
+                        <td class="px-4 py-2 align-top">
+                            @include('l18n-translator::partials.origin-badge', ['origin' => $entry['origin']])
+                        </td>
                         <td class="px-4 py-2 align-top w-1/3">
-                            <a href="{{ route('l18n.editstrings') }}?key={{ urlencode($entry['key']) }}"
+                            <a href="{{ route('l18n.editstrings', ['key' => $entry['id']]) }}"
                                @click.stop
                                class="text-blue-600 hover:underline font-mono text-xs break-all leading-relaxed"
-                               title="Edit in all languages">{{ $entry['key'] }}</a>
+                               title="Edit in all languages">{{ $entry['label'] }}</a>
                         </td>
                         <td class="px-4 py-2 align-top">
                             <div class="text-xs text-gray-400 mb-1 leading-snug">
@@ -105,7 +111,7 @@
                                 @endif
                             </div>
                             <textarea
-                                name="dict[{{ $entry['lang'] }}][{{ $entry['key'] }}]"
+                                name="dict[{{ $entry['lang'] }}][{{ $entry['id'] }}]"
                                 rows="2"
                                 dir="{{ $entry['langRtl'] ? 'rtl' : 'ltr' }}"
                                 class="w-full border border-gray-200 rounded px-2 py-1 text-sm resize-y
@@ -168,7 +174,7 @@ function missingEditor() {
         cancelTranslation() {
             this.abortController?.abort();
         },
-    }, filterableRowsMixin(['lang', 'langname']));
+    }, filterableRowsMixin(['lang', 'langname', 'label', 'origin']));
 }
 </script>
 @endsection

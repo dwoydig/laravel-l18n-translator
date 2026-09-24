@@ -1,6 +1,6 @@
 @extends(config('l18n-translator.layout') ?? 'l18n-translator::layout')
 
-@section('title', $isNew ? 'Add New String to all languages:' : 'Edit: ' . ($key ?? ''))
+@section('title', $isNew ? 'Add New String to all languages:' : 'Edit: ' . $entry['label'])
 
 @section('content')
 <div x-data="editStringForm()">
@@ -65,17 +65,32 @@
                             <div class="font-mono text-xs text-gray-400">__('key')</div>
                         </td>
                         <td class="px-4 py-3 align-top">
-                            <input
-                                type="text"
-                                id="key"
-                                name="key"
-                                value="{{ $key ?? '' }}"
-                                placeholder="Key used in your templates, e.g. navigation.home, login.username.placeholder ..."
-                                {{ !$isNew ? 'readonly' : '' }}
-                                @if($isNew) @input="keyValue = $event.target.value.trim(); dirty = true" @endif
-                                :class="showError('key') ? 'border-red-400 bg-red-50 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500 {{ !$isNew ? 'bg-gray-50 text-gray-500 cursor-default' : '' }}'"
-                                class="w-full border rounded px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2"
-                            >
+                            @if($isNew)
+                            <div class="flex gap-2">
+                                <select name="target"
+                                    class="border border-gray-300 rounded px-2 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    @foreach($targets as $target)
+                                    <option value="{{ $target['target'] }}">{{ $target['origin'] }} · {{ $target['label'] }}</option>
+                                    @endforeach
+                                </select>
+                                <input
+                                    type="text"
+                                    id="key"
+                                    name="key"
+                                    placeholder="Key used in your templates, e.g. navigation.home, login.username.placeholder ..."
+                                    @input="keyValue = $event.target.value.trim(); dirty = true"
+                                    :class="showError('key') ? 'border-red-400 bg-red-50 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500'"
+                                    class="flex-1 min-w-0 border rounded px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2"
+                                >
+                            </div>
+                            <p class="mt-1 text-xs text-gray-400">For PHP group files, nested keys use dot notation (<code class="font-mono">throttle.minutes</code>).</p>
+                            @else
+                            <input type="hidden" name="key" value="{{ $key }}">
+                            <div class="flex items-center gap-2">
+                                @include('l18n-translator::partials.origin-badge', ['origin' => $entry['origin']])
+                                <span class="font-mono text-sm text-gray-700 break-all">{{ $entry['label'] }}</span>
+                            </div>
+                            @endif
                             <p x-show="showError('key')" class="mt-1 text-xs text-red-500">Translation key is required.</p>
                         </td>
                     </tr>
@@ -127,7 +142,7 @@ function editStringForm() {
         busy: false,
         abortController: null,
         dirty: false,
-        keyValue: {!! json_encode($key ?? '') !!},
+        keyValue: {!! json_encode($isNew ? '' : $key) !!},
         sourceText: '',
         isNew: {{ $isNew ? 'true' : 'false' }},
         mainLang: {!! json_encode($mainLanguage) !!},

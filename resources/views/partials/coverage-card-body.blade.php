@@ -9,7 +9,7 @@
     <span class="text-xl leading-none">{{ $stat['file']->flag }}</span>
     <div class="min-w-0 flex-1">
         <span class="font-medium text-gray-900 text-sm">{{ $stat['file']->name }}</span>
-        <span class="text-xs text-gray-400 font-mono ml-2">{{ $stat['file']->basename }}</span>
+        <span class="text-xs text-gray-400 font-mono ml-2">{{ $stat['file']->filename }}</span>
     </div>
     <span class="text-base font-bold tabular-nums {{ $pctColor }}">{{ $pct }}%</span>
 </div>

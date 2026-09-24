@@ -5,6 +5,9 @@ namespace Dwoydig\L18nTranslator;
 use Dwoydig\L18nTranslator\Http\Controllers\DeeplController;
 use Dwoydig\L18nTranslator\Http\Controllers\TranslationController;
 use Dwoydig\L18nTranslator\Services\DeeplService;
+use Dwoydig\L18nTranslator\Translation\PhpArrayExporter;
+use Dwoydig\L18nTranslator\Translation\TranslationRepository;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -12,13 +15,18 @@ class TranslationServiceProvider extends ServiceProvider
 {
     /**
      * Merges the package config into the application's config repository
-     * and registers the DeeplService singleton.
+     * and registers the DeeplService and TranslationRepository singletons.
      */
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/l18n-translator.php', 'l18n-translator');
 
         $this->app->singleton(DeeplService::class);
+
+        $this->app->singleton(TranslationRepository::class, fn(Application $app): TranslationRepository => TranslationRepository::discover(
+            config('l18n-translator.lang_path') ?: resource_path('lang'),
+            $app->make(PhpArrayExporter::class),
+        ));
     }
 
     /**

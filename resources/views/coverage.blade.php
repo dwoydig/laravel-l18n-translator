@@ -90,7 +90,7 @@
                                     {{ $mainFile->name }}
                                     <span class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded font-normal">source</span>
                                 </div>
-                                <div class="font-mono text-xs text-blue-400 mt-0.5">{{ $mainFile->basename }}</div>
+                                <div class="font-mono text-xs text-blue-400 mt-0.5">{{ $mainFile->filename }}</div>
                             </div>
                         </a>
                     </td>
@@ -144,7 +144,7 @@
                             <span class="text-xl leading-none">{{ $stat['file']->flag }}</span>
                             <div>
                                 <div class="font-medium text-gray-900 group-hover:underline text-sm">{{ $stat['file']->name }}</div>
-                                <div class="font-mono text-xs text-gray-400 mt-0.5">{{ $stat['file']->basename }}</div>
+                                <div class="font-mono text-xs text-gray-400 mt-0.5">{{ $stat['file']->filename }}</div>
                             </div>
                         </a>
                     </td>
