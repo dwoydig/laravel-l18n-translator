@@ -229,6 +229,23 @@ All routes are prefixed with `route_prefix` (default `admin/translations`) and n
 
 ---
 
+## Development & testing
+
+```bash
+composer install
+composer test              # PHPUnit: unit + feature tests (Orchestra Testbench)
+
+npm ci
+npx playwright install chromium
+composer test:e2e          # Playwright browser tests against `vendor/bin/testbench serve`
+```
+
+- **PHP tests** (`tests/Unit`, `tests/Feature`) run against a fresh copy of `tests/Fixtures/lang` per test (JSON, PHP group and `vendor/cashier` fixtures). DeepL calls are faked with `Http::fake()`.
+- **Browser tests** (`tests/Browser`) start the package via `testbench serve` (configured in `testbench.yaml`), reset `tests/Browser/.lang` from the fixtures before every test and mock the package's `/deepl` endpoints — no real DeepL requests are made. Tailwind and Alpine are loaded from their CDNs, so the browser tests need network access.
+- **CI** (`.github/workflows/tests.yml`) runs PHPUnit on Laravel 10–13 and the Playwright suite on every pull request.
+
+---
+
 ## License
 
 MIT

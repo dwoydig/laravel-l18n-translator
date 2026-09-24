@@ -1,0 +1,13 @@
+# Used by `vendor/bin/testbench serve` for the Playwright browser tests (see playwright.config.ts).
+providers:
+  - Dwoydig\L18nTranslator\Tests\Browser\BrowserTestServiceProvider
+  - Dwoydig\L18nTranslator\TranslationServiceProvider
+
+env:
+  - APP_ENV=local
+  - APP_DEBUG=true
+  - APP_KEY=base64:2fl+Ktvkfl+Fuz4Qp/A75G2RTiWVA/ZoKZvp6fiiM10=
+  - SESSION_DRIVER=file
+  - CACHE_STORE=file
+  # Enables the DeepL UI; the browser tests mock the package's /deepl endpoints, so no real API calls are made.
+  - DEEPL_AUTH_KEY=browser-test-dummy-key

@@ -46,6 +46,14 @@ PHP ^8.1, Laravel 10–12. Frontend: Blade + Tailwind CSS (CDN) + Alpine.js.
 - Wo native Typen nicht ausreichen (z. B. Array-Strukturen), PHPDoc ergänzen: `@param array<string, string> $translations`, `@return list<string>`.
 - Keine `mixed`-Typen, wenn ein konkreterer Typ möglich ist.
 
+## Tests
+
+- Jedes Feature und jeder Bugfix kommt mit Tests; ein Bugfix zuerst mit einem Test, der den Fehler reproduziert.
+- PHP-Logik und Routen: PHPUnit mit Orchestra Testbench in `tests/Unit` bzw. `tests/Feature` (`composer test`). Tests erben von `Tests\TestCase`, das pro Test eine frische Kopie von `tests/Fixtures/lang` bereitstellt.
+- Frontend-Verhalten (Alpine.js, Filter, Auswahl, DeepL-UI): Playwright in `tests/Browser` (`composer test:e2e`). Keine echten DeepL-Aufrufe – im PHP-Test `Http::fake()`, im Browser-Test die gemockten `/deepl`-Routen aus `tests/Browser/fixtures.ts`.
+- Neue Beispieldaten gehören in `tests/Fixtures/lang` und werden von beiden Suites genutzt.
+- Vor jedem Commit müssen `composer test` und `composer test:e2e` grün sein. Die CI prüft Laravel 10–13.
+
 ## Git-Workflow
 
 - **Niemals direkt auf `master` committen.**
