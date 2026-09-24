@@ -68,7 +68,7 @@ When the Deepl integration is set up, it shows your remaining translation budget
 ## Requirements
 
 - PHP 8.1+
-- Laravel 10, 11, or 12
+- Laravel 10, 11, 12, or 13
 - `ext-intl` (for locale name resolution and flag detection)
 
 ---
