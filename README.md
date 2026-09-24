@@ -100,6 +100,10 @@ return [
     'middleware'    => ['web', 'auth'],       // protect the UI
     'main_language' => 'en',                 // source language all others are translated from
 
+    // Directory containing the `{locale}.json` files. Defaults to resources/lang.
+    // Override via L18N_LANG_PATH in your .env if your language files live elsewhere.
+    'lang_path' => env('L18N_LANG_PATH', resource_path('lang')),
+
     // null   = use built-in layout (Tailwind + Alpine CDN)
     // string = your own layout, e.g. 'layouts.admin'
     //          must @yield('content') and @yield('scripts')
@@ -133,6 +137,16 @@ DEEPL_AUTH_KEY=your-deepl-auth-key
 ```
 
 The free plan covers most use cases. After adding a key, the "Translate N keys" button becomes available in the editor. Without a key the UI works normally, only the translate button is hidden.
+
+### Custom language file location
+
+By default, translation files are read from and written to `resources/lang/*.json`. To use a different directory (e.g. a shared translations folder outside the default Laravel location), set it in your `.env`:
+
+```env
+L18N_LANG_PATH=/absolute/path/to/lang
+```
+
+No need to publish the config file just for this — the package config already reads `L18N_LANG_PATH` via `env()`.
 
 There are no plans to add other translation services like Amazon Translate. I have worked with them before and found the translation quality to be poor. Use DeepL if you care about quality and your conversion rate.
 

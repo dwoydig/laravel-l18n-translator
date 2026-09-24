@@ -53,7 +53,16 @@ class TranslationManager
     }
 
     /**
-     * Reads and JSON-decodes a language file from `resources/lang/{iso}.json`.
+     * Returns the configured directory containing the `{locale}.json` translation files.
+     * Defaults to `resources/lang`; override via L18N_LANG_PATH in .env.
+     */
+    public static function langPath(): string
+    {
+        return config('l18n-translator.lang_path') ?: resource_path('lang');
+    }
+
+    /**
+     * Reads and JSON-decodes a language file from the configured lang path.
      * Returns an empty array when the file does not exist or contains invalid JSON.
      *
      * @param  string  $isoLanguage  BCP-47 locale code (e.g. "de", "en-GB").
@@ -61,7 +70,7 @@ class TranslationManager
      */
     public static function loadJson(string $isoLanguage): array
     {
-        $path = resource_path('lang/' . $isoLanguage . '.json');
+        $path = static::langPath() . '/' . $isoLanguage . '.json';
         if (!File::exists($path)) {
             return [];
         }
@@ -76,7 +85,7 @@ class TranslationManager
      */
     public function saveTranslationFile(): bool
     {
-        $path = resource_path('lang/' . $this->translationLanguageIso . '.json');
+        $path = static::langPath() . '/' . $this->translationLanguageIso . '.json';
         $contents = json_encode($this->translationLanguage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         return (bool) File::put($path, $contents);
     }
@@ -153,8 +162,8 @@ class TranslationManager
     }
 
     /**
-     * Scans `resources/lang/*.json` and returns a collection of language file objects.
-     * Each object exposes: basename, filename, extension, name, flag, rtl.
+     * Scans the configured lang path for `*.json` files and returns a collection of
+     * language file objects. Each object exposes: basename, filename, extension, name, flag, rtl.
      * The main/source language is always sorted first.
      *
      * @return Collection<int, object>
@@ -163,7 +172,7 @@ class TranslationManager
     {
         $main = $this->mainLanguageIso;
         $files = collect();
-        foreach (File::glob(resource_path('lang/*.json')) as $file) {
+        foreach (File::glob(static::langPath() . '/*.json') as $file) {
             $iso = pathinfo($file, PATHINFO_FILENAME);
             $files->push((object) [
                 'basename'  => basename($file),
