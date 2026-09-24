@@ -45,7 +45,7 @@
                     get filtered() {
                         if (this.query.trim() === '') return [];
                         const q = this.query.toLowerCase();
-                        return this.keys.filter(k => k.toLowerCase().includes(q)).slice(0, 20);
+                        return this.keys.filter(k => k.label.toLowerCase().includes(q) || k.origin.toLowerCase().includes(q)).slice(0, 20);
                     },
                     async loadKeys() {
                         if (this.keys.length > 0) return;
@@ -70,7 +70,7 @@
                         if (!this.open) return;
                         if (e.key === 'ArrowDown')  { e.preventDefault(); this.highlighted = Math.min(this.highlighted + 1, this.filtered.length - 1); }
                         if (e.key === 'ArrowUp')    { e.preventDefault(); this.highlighted = Math.max(this.highlighted - 1, 0); }
-                        if (e.key === 'Enter' && this.highlighted >= 0) { e.preventDefault(); this.select(this.filtered[this.highlighted]); }
+                        if (e.key === 'Enter' && this.highlighted >= 0) { e.preventDefault(); this.select(this.filtered[this.highlighted].id); }
                         if (e.key === 'Escape')     { this.open = false; this.highlighted = -1; }
                     },
                  }"
@@ -100,12 +100,13 @@
                 <ul x-show="open && filtered.length > 0"
                     x-transition
                     class="absolute z-50 mt-1 w-full max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg text-sm font-mono">
-                    <template x-for="(key, i) in filtered" :key="key">
-                        <li @click="select(key)"
+                    <template x-for="(key, i) in filtered" :key="key.id">
+                        <li @click="select(key.id)"
                             @mouseenter="highlighted = i"
                             :class="highlighted === i ? 'bg-blue-50 text-blue-900' : 'text-gray-800 hover:bg-gray-50'"
-                            class="px-3 py-1.5 cursor-pointer truncate"
-                            x-text="key">
+                            class="px-3 py-1.5 cursor-pointer flex items-center gap-2">
+                            <span class="truncate" x-text="key.label"></span>
+                            <span x-show="key.origin !== 'app'" class="ml-auto shrink-0 px-1.5 rounded text-xs bg-indigo-50 text-indigo-700" x-text="key.origin"></span>
                         </li>
                     </template>
                 </ul>

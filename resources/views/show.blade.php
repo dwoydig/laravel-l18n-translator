@@ -65,6 +65,7 @@
                                 @click="selectedCount === visibleRows().length ? selectNone() : selectAll()"
                                 class="rounded border-gray-300 text-blue-600 cursor-pointer">
                         </th>
+                        <th class="px-4 py-2.5 font-medium text-gray-600 w-28">Origin</th>
                         <th class="px-4 py-2.5 font-medium text-gray-600 w-1/3">Key</th>
                         <th class="px-4 py-2.5 font-medium text-gray-600">
                             @php $langFile = $languageFiles->firstWhere('filename', $lang); @endphp
@@ -72,7 +73,7 @@
                                 <span class="flex items-center gap-2">
                                     <span class="text-xl leading-none">{{ $langFile?->flag }}</span>
                                     <span>{{ $langFile?->name ?? $lang }}</span>
-                                    <span class="font-normal text-gray-400 font-mono text-xs">{{ $langFile?->basename }}</span>
+                                    <span class="font-normal text-gray-400 font-mono text-xs">{{ $langFile?->filename ?? $lang }}</span>
                                 </span>
                                 <button type="button"
                                     @click="showOnlySelected ? (showOnlySelected = false) : selectMissing()"
@@ -92,7 +93,9 @@
                         x-show="isVisible($el)"
                         @click="if (!$event.target.closest('textarea, a')) toggleRow($el.dataset.key)"
                         :class="rowClass($el)"
-                        data-key="{{ $entry['key'] }}"
+                        data-key="{{ $entry['id'] }}"
+                        data-label="{{ $entry['label'] }}"
+                        data-origin="{{ $entry['origin'] }}"
                         data-original="{{ html_entity_decode($entry['original'] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8') }}"
                     >
                         <td class="pl-3 py-2 align-top">
@@ -101,11 +104,14 @@
                                 @click.stop="toggleRow($el.closest('tr').dataset.key)"
                                 class="mt-1 rounded border-gray-300 text-blue-600 cursor-pointer">
                         </td>
+                        <td class="px-4 py-2 align-top">
+                            @include('l18n-translator::partials.origin-badge', ['origin' => $entry['origin']])
+                        </td>
                         <td class="px-4 py-2 align-top w-1/3">
-                            <a href="{{ route('l18n.editstrings') }}?key={{ urlencode($entry['key']) }}"
+                            <a href="{{ route('l18n.editstrings', ['key' => $entry['id']]) }}"
                                @click.stop
                                class="text-blue-600 hover:underline font-mono text-xs break-all leading-relaxed"
-                               title="Edit in all languages">{{ $entry['key'] }}</a>
+                               title="Edit in all languages">{{ $entry['label'] }}</a>
                         </td>
                         <td class="px-4 py-2 align-top">
                             @if($entry['original'])
@@ -114,7 +120,7 @@
                             <div class="text-xs text-red-400 mb-1 font-medium">Missing in {{ $mainLanguage }}</div>
                             @endif
                             <textarea
-                                name="dict[{{ $entry['key'] }}]"
+                                name="dict[{{ $entry['id'] }}]"
                                 rows="2"
                                 dir="{{ $isRtl ? 'rtl' : 'ltr' }}"
                                 autocomplete="off"
@@ -137,7 +143,7 @@
 
 @if(count($orphaned) > 0)
 <form method="POST" action="{{ route('l18n.orphans.adopt') }}" class="mt-4"
-      x-data="orphanEditor({{ json_encode(array_keys($orphaned)) }})">
+      x-data="orphanEditor({{ json_encode(array_column($orphaned, 'id')) }})">
     @csrf
     <input type="hidden" name="lang" value="{{ $lang }}">
 
@@ -188,25 +194,29 @@
                             @click="selected.size === allKeys.length ? selectNone() : selectAll()"
                             class="rounded border-gray-300 text-amber-600 cursor-pointer">
                     </th>
+                    <th class="px-4 py-2 font-medium text-gray-600 w-28">Origin</th>
                     <th class="px-4 py-2 font-medium text-gray-600 w-1/3">Key</th>
                     <th class="px-4 py-2 font-medium text-gray-600">Value in {{ $langName }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-                @foreach($orphaned as $key => $value)
+                @foreach($orphaned as $entry)
                 <tr @click="if (!$event.target.closest('input')) toggleRow($el.dataset.key)"
                     :class="selected.has($el.dataset.key) ? 'bg-amber-50 cursor-pointer' : 'hover:bg-gray-50/60 cursor-pointer'"
-                    data-key="{{ $key }}">
+                    data-key="{{ $entry['id'] }}">
                     <td class="pl-3 py-2 align-top">
                         <input type="checkbox"
                             name="keys[]"
-                            value="{{ $key }}"
+                            value="{{ $entry['id'] }}"
                             :checked="selected.has($el.closest('tr').dataset.key)"
                             @click.stop="toggleRow($el.closest('tr').dataset.key)"
                             class="mt-0.5 rounded border-gray-300 text-amber-600 cursor-pointer">
                     </td>
-                    <td class="px-4 py-2 align-top font-mono text-xs text-gray-700 break-all">{{ $key }}</td>
-                    <td class="px-4 py-2 align-top text-gray-600">{{ html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</td>
+                    <td class="px-4 py-2 align-top">
+                        @include('l18n-translator::partials.origin-badge', ['origin' => $entry['origin']])
+                    </td>
+                    <td class="px-4 py-2 align-top font-mono text-xs text-gray-700 break-all">{{ $entry['label'] }}</td>
+                    <td class="px-4 py-2 align-top text-gray-600">{{ html_entity_decode($entry['value'], ENT_QUOTES | ENT_HTML5, 'UTF-8') }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -275,7 +285,7 @@ function translationEditor() {
         cancelTranslation() {
             this.abortController?.abort();
         },
-    }, filterableRowsMixin());
+    }, filterableRowsMixin(['label', 'origin']));
 }
 
 function orphanEditor(allKeys = []) {

@@ -2,6 +2,8 @@
 
 namespace Dwoydig\L18nTranslator\Http\Controllers;
 
+use Dwoydig\L18nTranslator\Translation\TranslationKey;
+use Dwoydig\L18nTranslator\Translation\TranslationManagerFactory;
 use Dwoydig\L18nTranslator\TranslationManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -11,12 +13,16 @@ use Illuminate\Routing\Controller;
 
 class TranslationController extends Controller
 {
+    public function __construct(private readonly TranslationManagerFactory $managers)
+    {
+    }
+
     /**
      * Languages overview — lists all language files with an "Add Language" modal.
      */
     public function index(): View
     {
-        $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
+        $manager = $this->managers->main();
         $languageFiles = $manager->getLanguageFiles();
         $mainLanguage = $manager->getMainLanguageIso();
         $existing = $languageFiles->pluck('filename')->flip()->all();
@@ -31,7 +37,7 @@ class TranslationController extends Controller
      */
     public function show(string $lang): View
     {
-        $manager = new TranslationManager($lang);
+        $manager = $this->managers->make($lang);
         $translations = TranslationManager::mergeTranslations($manager->getMainLanguage(), $manager->getTranslationLanguage());
         $mainLanguage = $manager->getMainLanguageIso();
         $languageFiles = $manager->getLanguageFiles();
@@ -47,8 +53,8 @@ class TranslationController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $lang = $request->validate(['targetLanguage' => 'required|string|max:10'])['targetLanguage'];
-        $manager = new TranslationManager($lang);
+        $lang = $request->validate(['targetLanguage' => ['required', 'string', 'max:10', 'regex:/^[A-Za-z0-9_-]+$/']])['targetLanguage'];
+        $manager = $this->managers->make($lang);
         $manager->createEmptyTranslationFile();
         $manager->saveTranslationFile();
         session()->flash('success', ["Language file '{$lang}.json' created — fill in the translations below."]);
@@ -56,17 +62,17 @@ class TranslationController extends Controller
     }
 
     /**
-     * Saves the full translation dictionary for a single language file.
+     * Saves the full translation dictionary for a single language; emptied values are removed.
      *
-     * @param  Request  $request  Must contain `lang` and `dict` (key → value map).
+     * @param  Request  $request  Must contain `lang` and `dict` (translation id → value map).
      */
     public function storeDictionary(Request $request): RedirectResponse
     {
         $lang = $request->input('lang');
         $dict = $request->input('dict', []);
-        $manager = new TranslationManager($lang);
+        $manager = $this->managers->make($lang);
         foreach ($dict as $key => $value) {
-            $manager->setTranslation($key, $value);
+            $manager->applyTranslation($key, $value);
         }
         $manager->saveTranslationFile();
         session()->flash('success', ['Translation saved.']);
@@ -78,66 +84,75 @@ class TranslationController extends Controller
      */
     public function addString(): View
     {
-        $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
+        $manager = $this->managers->main();
         $languageFiles = $manager->getLanguageFiles();
         $mainLanguage = $manager->getMainLanguageIso();
+        $targets = $manager->getTargets();
         $isNew = true;
-        return view('l18n-translator::editstring', compact('languageFiles', 'mainLanguage', 'isNew'));
+        return view('l18n-translator::editstring', compact('languageFiles', 'mainLanguage', 'targets', 'isNew'));
     }
 
     /**
      * Persists a new translation key with its values across all language files.
      * Languages with an empty or null value are skipped.
      *
-     * @param  Request  $request  Must contain `key` and `languages` (locale → value map).
+     * @param  Request  $request  Must contain `target` (`{origin}|{group}`), `key` and `languages` (locale → value map).
      */
     public function appendToTranslations(Request $request): RedirectResponse
     {
-        $key = $request->input('key');
-        $languages = $request->input('languages', []);
-        foreach ($languages as $iso => $string) {
+        $input = $request->validate([
+            'target'      => 'required|string',
+            'key'         => 'required|string',
+            'languages'   => 'array',
+            'languages.*' => 'nullable|string',
+        ]);
+        $key = TranslationKey::fromId($input['target'] . '|' . $input['key']);
+        foreach ($input['languages'] ?? [] as $iso => $string) {
             if ($string !== '' && $string !== null) {
-                $manager = new TranslationManager($iso);
-                $manager->setTranslation($key, $string);
+                $manager = $this->managers->make($iso);
+                $manager->setTranslation($key->id(), $string);
                 $manager->saveTranslationFile();
             }
         }
-        session()->flash('success', ["Key '{$key}' added to all translation files."]);
+        session()->flash('success', ["Key '{$key->label()}' added to all translation files."]);
         return redirect()->back();
     }
 
     /**
      * Updates an existing translation key across all language files.
+     * Emptied values are removed so Laravel falls back to the fallback locale.
      *
-     * @param  Request  $request  Must contain `key` and `languages` (locale → value map).
+     * @param  Request  $request  Must contain `key` (translation id) and `languages` (locale → value map).
      */
     public function updateAllTranslations(Request $request): RedirectResponse
     {
         $key = $request->input('key');
         $languages = $request->input('languages', []);
         foreach ($languages as $iso => $string) {
-            $manager = new TranslationManager($iso);
-            $manager->setTranslation($key, $string ?? '');
+            $manager = $this->managers->make($iso);
+            $manager->applyTranslation($key, $string);
             $manager->saveTranslationFile();
         }
-        session()->flash('success', ["Key '{$key}' updated across all languages."]);
+        session()->flash('success', ["Key '" . TranslationKey::fromId($key)->label() . "' updated across all languages."]);
         return redirect()->route('l18n.editstrings', ['key' => $key]);
     }
 
     /**
      * Edit-existing-string form — renders the editstring view pre-filled with current translations.
      *
-     * @param  Request  $request  Optional `key` query parameter selects which key to edit.
+     * @param  Request  $request  Required `key` query parameter (translation id) selects which key to edit.
      */
     public function editStrings(Request $request): View
     {
-        $key = $request->query('key', '');
-        $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
+        $key = (string) $request->query('key', '');
+        abort_if($key === '', 404);
+        $entry = TranslationManager::describe($key);
+        $manager = $this->managers->main();
         $languageFiles = $manager->getLanguageFiles();
         $mainLanguage = $manager->getMainLanguageIso();
-        $translations = $key !== '' ? $manager->getAllForKey($key) : [];
+        $translations = $manager->getAllForKey($key);
         $isNew = false;
-        return view('l18n-translator::editstring', compact('key', 'translations', 'languageFiles', 'mainLanguage', 'isNew'));
+        return view('l18n-translator::editstring', compact('key', 'entry', 'translations', 'languageFiles', 'mainLanguage', 'isNew'));
     }
 
     /**
@@ -145,15 +160,15 @@ class TranslationController extends Controller
      */
     public function coverage(): View
     {
-        $mainIso  = config('l18n-translator.main_language', 'en');
-        $manager  = new TranslationManager($mainIso);
+        $mainIso  = $this->managers->mainLanguageIso();
+        $manager  = $this->managers->make($mainIso);
         $main     = $manager->getMainLanguage();
         $mainCount = count($main);
 
         $stats = $manager->getLanguageFiles()
             ->reject(fn($f) => $f->filename === $mainIso)
-            ->map(function ($file) use ($main, $mainCount) {
-                $lang = TranslationManager::loadJson($file->filename);
+            ->map(function ($file) use ($manager, $main, $mainCount) {
+                $lang = $manager->loadLanguage($file->filename);
                 $translated    = 0;
                 $missing       = 0;
                 $missingChars  = 0;
@@ -188,22 +203,21 @@ class TranslationController extends Controller
      */
     public function missingAll(): View
     {
-        $mainIso  = config('l18n-translator.main_language', 'en');
-        $manager  = new TranslationManager($mainIso);
+        $mainIso  = $this->managers->mainLanguageIso();
+        $manager  = $this->managers->make($mainIso);
         $main     = $manager->getMainLanguage();
         $languageFiles = $manager->getLanguageFiles();
 
         $missing = [];
         foreach ($languageFiles->reject(fn($f) => $f->filename === $mainIso) as $file) {
-            $lang = TranslationManager::loadJson($file->filename);
+            $lang = $manager->loadLanguage($file->filename);
             foreach ($main as $key => $value) {
                 if (!isset($lang[$key]) || $lang[$key] === '') {
-                    $missing[] = [
+                    $missing[] = TranslationManager::describe($key) + [
                         'lang'     => $file->filename,
                         'langName' => $file->name,
                         'langFlag' => $file->flag,
                         'langRtl'  => $file->rtl,
-                        'key'      => $key,
                         'original' => $value,
                     ];
                 }
@@ -225,7 +239,7 @@ class TranslationController extends Controller
         $dict = $request->input('dict', []);
         $saved = 0;
         foreach ($dict as $lang => $keys) {
-            $manager = new TranslationManager($lang);
+            $manager = $this->managers->make($lang);
             $hasChanges = false;
             foreach ($keys as $key => $value) {
                 if ($value !== null && $value !== '') {
@@ -252,9 +266,9 @@ class TranslationController extends Controller
     {
         $lang = $request->input('lang');
         $keys = $request->input('keys', []);
-        $mainLang = config('l18n-translator.main_language', 'en');
+        $mainLang = $this->managers->mainLanguageIso();
 
-        $manager = new TranslationManager($mainLang);
+        $manager = $this->managers->make($mainLang);
         foreach ($keys as $key) {
             $manager->setTranslation($key, '');
         }
@@ -274,7 +288,7 @@ class TranslationController extends Controller
         $lang = $request->input('lang');
         $keys = $request->input('keys', []);
 
-        $manager = new TranslationManager($lang);
+        $manager = $this->managers->make($lang);
         foreach ($keys as $key) {
             $manager->removeTranslation($key);
         }
@@ -285,12 +299,15 @@ class TranslationController extends Controller
     }
 
     /**
-     * Returns all translation keys from the main language file as a JSON array.
+     * Returns all translation keys of the main language as a JSON array of `{id, label, origin}` objects.
      * Used by the header key-search autocomplete.
      */
     public function keys(): JsonResponse
     {
-        $manager = new TranslationManager(config('l18n-translator.main_language', 'en'));
-        return response()->json(array_keys($manager->getMainLanguage()));
+        $manager = $this->managers->main();
+        return response()->json(array_map(
+            TranslationManager::describe(...),
+            array_keys($manager->getMainLanguage()),
+        ));
     }
 }

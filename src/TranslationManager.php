@@ -2,8 +2,9 @@
 
 namespace Dwoydig\L18nTranslator;
 
+use Dwoydig\L18nTranslator\Translation\TranslationKey;
+use Dwoydig\L18nTranslator\Translation\TranslationRepository;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\File;
 
 class TranslationManager
 {
@@ -12,16 +13,23 @@ class TranslationManager
     private string $translationLanguageIso;
     private array $translationLanguage = [];
 
+    /** @var array<string, string|null> Pending changes (translation id → value, null = removed) since the last save. */
+    private array $changes = [];
+
     /**
-     * @param  string       $languageIso      BCP-47 locale to load as the translation target.
-     * @param  string|null  $mainLanguageIso  Override for the source language; defaults to `l18n-translator.main_language`.
+     * @param  TranslationRepository  $repository       Reads and writes all translation sources.
+     * @param  string                 $languageIso      Locale to load as the translation target.
+     * @param  string|null            $mainLanguageIso  Override for the source language; defaults to `l18n-translator.main_language`.
      */
-    public function __construct(string $languageIso, ?string $mainLanguageIso = null)
-    {
-        $this->mainLanguageIso = strtolower($mainLanguageIso ?? config('l18n-translator.main_language', 'en'));
-        $this->translationLanguageIso = strtolower($languageIso);
-        $this->mainLanguage = static::loadJson($this->mainLanguageIso);
-        $this->translationLanguage = static::loadJson($this->translationLanguageIso);
+    public function __construct(
+        private readonly TranslationRepository $repository,
+        string $languageIso,
+        ?string $mainLanguageIso = null,
+    ) {
+        $this->mainLanguageIso = $mainLanguageIso ?? config('l18n-translator.main_language', 'en');
+        $this->translationLanguageIso = $languageIso;
+        $this->mainLanguage = $this->loadLanguage($this->mainLanguageIso);
+        $this->translationLanguage = $this->loadLanguage($this->translationLanguageIso);
     }
 
     /**
@@ -33,7 +41,7 @@ class TranslationManager
     }
 
     /**
-     * Returns the full key→value map of the source language.
+     * Returns the full translation id → value map of the source language.
      *
      * @return array<string, string>
      */
@@ -43,7 +51,7 @@ class TranslationManager
     }
 
     /**
-     * Returns the full key→value map of the target translation language.
+     * Returns the full translation id → value map of the target translation language.
      *
      * @return array<string, string>
      */
@@ -53,117 +61,146 @@ class TranslationManager
     }
 
     /**
-     * Returns the configured directory containing the `{locale}.json` translation files.
-     * Defaults to `resources/lang`; override via L18N_LANG_PATH in .env.
-     */
-    public static function langPath(): string
-    {
-        return config('l18n-translator.lang_path') ?: resource_path('lang');
-    }
-
-    /**
-     * Reads and JSON-decodes a language file from the configured lang path.
-     * Returns an empty array when the file does not exist or contains invalid JSON.
+     * Loads all translations of a locale (JSON, PHP groups and vendor overrides) as a flat id → value map.
      *
-     * @param  string  $isoLanguage  BCP-47 locale code (e.g. "de", "en-GB").
+     * @param  string  $isoLanguage  Locale code (e.g. "de", "pt_BR").
      * @return array<string, string>
      */
-    public static function loadJson(string $isoLanguage): array
+    public function loadLanguage(string $isoLanguage): array
     {
-        $path = static::langPath() . '/' . $isoLanguage . '.json';
-        if (!File::exists($path)) {
-            return [];
-        }
-        $decoded = json_decode(File::get($path), true);
-        return is_array($decoded) ? $decoded : [];
+        return $this->repository->load($isoLanguage);
     }
 
     /**
-     * Writes the current translation language data back to its JSON file.
+     * Returns the files new keys can be added to, based on the main language's files.
      *
-     * @return bool  True on success, false if the file could not be written.
+     * @return list<array{target: string, origin: string, label: string}>
      */
-    public function saveTranslationFile(): bool
+    public function getTargets(): array
     {
-        $path = static::langPath() . '/' . $this->translationLanguageIso . '.json';
-        $contents = json_encode($this->translationLanguage, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        return (bool) File::put($path, $contents);
+        return $this->repository->targets($this->mainLanguageIso);
     }
 
     /**
-     * Pre-populate all keys from the main language with empty strings,
-     * ready for manual or DeepL translation in the UI.
+     * Writes all pending changes of the translation language back to their source files.
+     * Files without changes are left untouched.
+     */
+    public function saveTranslationFile(): void
+    {
+        $this->repository->write($this->translationLanguageIso, $this->changes);
+        $this->changes = [];
+    }
+
+    /**
+     * Pre-populate all JSON keys from the main language with empty strings,
+     * ready for manual or DeepL translation in the UI. PHP group and vendor
+     * files are created on the first save of a translated value.
      */
     public function createEmptyTranslationFile(): void
     {
-        foreach (array_keys($this->mainLanguage) as $key) {
-            $this->translationLanguage[$key] ??= '';
+        foreach (array_keys($this->mainLanguage) as $id) {
+            if (TranslationKey::fromId($id)->isJson() && !array_key_exists($id, $this->translationLanguage)) {
+                $this->setTranslation($id, '');
+            }
         }
+    }
+
+    /**
+     * Describes a translation id for display: its code label (e.g. `auth.failed`) and origin ("app" or package).
+     *
+     * @return array{id: string, label: string, origin: string}
+     */
+    public static function describe(string $id): array
+    {
+        $key = TranslationKey::fromId($id);
+        return ['id' => $id, 'label' => $key->label(), 'origin' => $key->origin];
     }
 
     /**
      * Merge main and target language arrays into a flat list suitable for view iteration.
-     * Each entry contains 'key', 'original' (source text), and 'translation' (target text or null).
      *
-     * @param  array<string, string>  $main    Source language key→value map.
-     * @param  array<string, string>  $target  Target language key→value map.
-     * @return array<int, array{key: string, original: string, translation: string|null}>
+     * @param  array<string, string>  $main    Source language id→value map.
+     * @param  array<string, string>  $target  Target language id→value map.
+     * @return list<array{id: string, label: string, origin: string, original: string, translation: string|null}>
      */
     public static function mergeTranslations(array $main, array $target): array
     {
         $result = [];
-        foreach ($main as $key => $value) {
-            $result[] = [
-                'key'         => $key,
+        foreach ($main as $id => $value) {
+            $result[] = static::describe($id) + [
                 'original'    => $value,
-                'translation' => $target[$key] ?? null,
+                'translation' => $target[$id] ?? null,
             ];
         }
         return $result;
     }
 
     /**
-     * Sets or overwrites a single translation key in the in-memory target language array.
+     * Sets or overwrites a single translation in the in-memory target language array.
      * Call saveTranslationFile() afterwards to persist.
      *
-     * @param  string  $key    Translation key.
+     * @param  string  $id     Translation id (`{origin}|{group}|{key}`).
      * @param  string  $value  Translated string.
      */
-    public function setTranslation(string $key, string $value): void
+    public function setTranslation(string $id, string $value): void
     {
-        $this->translationLanguage[$key] = $value;
+        if (($this->translationLanguage[$id] ?? null) === $value) {
+            return;
+        }
+        $this->translationLanguage[$id] = $value;
+        $this->changes[$id] = $value;
     }
 
     /**
-     * Removes a single key from the in-memory target language array.
+     * Sets a translation, or removes it when the value is empty so Laravel falls back
+     * to the fallback locale instead of rendering an empty string.
      * Call saveTranslationFile() afterwards to persist.
      *
-     * @param  string  $key  Translation key to remove.
+     * @param  string       $id     Translation id (`{origin}|{group}|{key}`).
+     * @param  string|null  $value  Translated string; null or '' removes the translation.
      */
-    public function removeTranslation(string $key): void
+    public function applyTranslation(string $id, ?string $value): void
     {
-        unset($this->translationLanguage[$key]);
+        if ($value === null || $value === '') {
+            $this->removeTranslation($id);
+        } else {
+            $this->setTranslation($id, $value);
+        }
     }
 
     /**
-     * Returns the current value of a single key across all language files.
+     * Removes a single translation from the in-memory target language array.
+     * Call saveTranslationFile() afterwards to persist.
      *
-     * @param  string  $key  Translation key to look up.
+     * @param  string  $id  Translation id to remove.
+     */
+    public function removeTranslation(string $id): void
+    {
+        if (!array_key_exists($id, $this->translationLanguage)) {
+            return;
+        }
+        unset($this->translationLanguage[$id]);
+        $this->changes[$id] = null;
+    }
+
+    /**
+     * Returns the current value of a single translation across all languages.
+     *
+     * @param  string  $id  Translation id to look up.
      * @return array<string, string|null>  Locale → value map; null when the key is absent.
      */
-    public function getAllForKey(string $key): array
+    public function getAllForKey(string $id): array
     {
         $translations = [];
         foreach ($this->getLanguageFiles() as $file) {
-            $contents = static::loadJson($file->filename);
-            $translations[$file->filename] = $contents[$key] ?? null;
+            $translations[$file->filename] = $this->loadLanguage($file->filename)[$id] ?? null;
         }
         return $translations;
     }
 
     /**
-     * Scans the configured lang path for `*.json` files and returns a collection of
-     * language file objects. Each object exposes: basename, filename, extension, name, flag, rtl.
+     * Returns all locales found in any translation source (JSON, PHP groups, vendor overrides).
+     * Each object exposes: filename (locale code), name, flag, rtl.
      * The main/source language is always sorted first.
      *
      * @return Collection<int, object>
@@ -171,19 +208,14 @@ class TranslationManager
     public function getLanguageFiles(): Collection
     {
         $main = $this->mainLanguageIso;
-        $files = collect();
-        foreach (File::glob(static::langPath() . '/*.json') as $file) {
-            $iso = pathinfo($file, PATHINFO_FILENAME);
-            $files->push((object) [
-                'basename'  => basename($file),
-                'filename'  => $iso,
-                'extension' => pathinfo($file, PATHINFO_EXTENSION),
-                'name'      => static::resolveLocaleName($iso),
-                'flag'      => static::localeToFlag($iso),
-                'rtl'       => static::isRtl($iso),
-            ]);
-        }
-        return $files->sortBy(fn($f) => $f->filename === $main ? 0 : 1);
+        return collect($this->repository->locales())
+            ->map(fn(string $iso): object => (object) [
+                'filename' => $iso,
+                'name'     => static::resolveLocaleName($iso),
+                'flag'     => static::localeToFlag($iso),
+                'rtl'      => static::isRtl($iso),
+            ])
+            ->sortBy(fn(object $f): int => $f->filename === $main ? 0 : 1);
     }
 
     /**
@@ -284,17 +316,15 @@ class TranslationManager
     }
 
     /**
-     * Returns keys that exist in the target language file but are absent from the main language.
+     * Returns translations that exist in the target language but are absent from the main language.
      *
-     * @return array<string, string>  Key → value map of orphaned entries.
+     * @return list<array{id: string, label: string, origin: string, value: string}>
      */
     public function orphanedTranslations(): array
     {
         $orphaned = [];
-        foreach ($this->translationLanguage as $key => $value) {
-            if (!array_key_exists($key, $this->mainLanguage)) {
-                $orphaned[$key] = $value;
-            }
+        foreach (array_diff_key($this->translationLanguage, $this->mainLanguage) as $id => $value) {
+            $orphaned[] = static::describe($id) + ['value' => $value];
         }
         return $orphaned;
     }
@@ -302,7 +332,7 @@ class TranslationManager
     /**
      * Returns keys that exist in the main language but are absent or empty in the target language.
      *
-     * @return array<string, string>  Key → source value map of missing entries.
+     * @return array<string, string>  Translation id → source value map of missing entries.
      */
     public function missingTranslations(): array
     {

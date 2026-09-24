@@ -1,8 +1,8 @@
 # Laravel L18n Translator
 
-A backend package for multi-language Laravel projects. It mounts a translation editor directly inside your app - no separate tools, no file juggling between folders and services, no format conversions, no broken or invalid `.json` files. Your `resources/lang/*.json` files are edited in the browser, can be automatically batch-translated via Deepl and saved directly back to disk, ready to be used use in your app.
+A backend package for multi-language Laravel projects. It mounts a translation editor directly inside your app - no separate tools, no file juggling between folders and services, no format conversions, no broken or invalid `.json` files. Your JSON language files, PHP group files and vendor package overrides are edited in the browser, can be automatically batch-translated via Deepl and saved directly back to disk, ready to be used use in your app.
 
-Install it in any Laravel project that already uses Localization and JSON language files (see https://laravel.com/docs/13.x/localization) and needs a maintainable way to keep translations up to date. It is especially useful when multiple languages are added over time and keeping all translation keys in sync across files becomes error-prone.
+Install it in any Laravel project that already uses Localization with JSON and/or PHP language files (see https://laravel.com/docs/13.x/localization) and needs a maintainable way to keep translations up to date. It is especially useful when multiple languages are added over time and keeping all translation keys in sync across files becomes error-prone.
 
 Optional [DeepL](https://www.deepl.com) auto-translation included. The UI is built with Tailwind CSS and Alpine.js, loaded from CDN — no build step required.
 
@@ -51,7 +51,8 @@ When the Deepl integration is set up, it shows your remaining translation budget
 
 ## Features
 
-- **Language overview:** list all `resources/lang/*.json` files with flag emoji and locale name
+- **Language overview:** list all locales found in your lang folder with flag emoji and locale name
+- **JSON, PHP groups and vendor overrides:** edits `{locale}.json`, `{locale}/{group}.php` and `vendor/{package}/{locale}/{group}.php`; an *Origin* column shows whether a key belongs to the app or to a vendor package
 - **Per-language editor:** side-by-side view of source vs. target language with inline editing
 - **Search & filter:** filter rows by key or value in real time
 - **Missing-only mode:** show only untranslated keys with one click (or via `?filter=missing` URL param)
@@ -100,7 +101,7 @@ return [
     'middleware'    => ['web', 'auth'],       // protect the UI
     'main_language' => 'en',                 // source language all others are translated from
 
-    // Directory containing the `{locale}.json` files. Defaults to resources/lang.
+    // Laravel lang directory (JSON, PHP groups, vendor overrides). Defaults to resources/lang.
     // Override via L18N_LANG_PATH in your .env if your language files live elsewhere.
     'lang_path' => env('L18N_LANG_PATH', resource_path('lang')),
 
@@ -138,9 +139,19 @@ DEEPL_AUTH_KEY=your-deepl-auth-key
 
 The free plan covers most use cases. After adding a key, the "Translate N keys" button becomes available in the editor. Without a key the UI works normally, only the translate button is hidden.
 
+### Supported file types
+
+| File | Origin | Key shown as |
+|---|---|---|
+| `{lang_path}/{locale}.json` | `app` | `Welcome back` |
+| `{lang_path}/{locale}/{group}.php` | `app` | `auth.failed` |
+| `{lang_path}/vendor/{package}/{locale}/{group}.php` | `{package}` | `package::group.key` |
+
+Nested arrays in PHP group files are shown in dot notation (`auth.throttle.minutes`). Only files that contain changes are rewritten on save; PHP files are re-exported with short array syntax, so comments in them are not preserved. Clearing a value removes the key, so Laravel falls back to the fallback locale — this avoids empty vendor overrides shadowing a package's own translations.
+
 ### Custom language file location
 
-By default, translation files are read from and written to `resources/lang/*.json`. To use a different directory (e.g. a shared translations folder outside the default Laravel location), set it in your `.env`:
+By default, translation files are read from and written to `resources/lang`. To use a different directory (e.g. a shared translations folder outside the default Laravel location), set it in your `.env`:
 
 ```env
 L18N_LANG_PATH=/absolute/path/to/lang
@@ -162,7 +173,7 @@ Navigate to `/admin/translations` (or your configured `route_prefix`).
 | **Coverage** | Visual block display of translation completeness per language                           |
 | **Edit language** | Editor with search, missing-only filter, orphan detection, and DeepL batch-translate    |
 | **+ Language** | Creates a new `{lang}.json` pre-filled with all required keys from the source language |
-| **+ String** | Add a new string to all language files at once                                          |
+| **+ String** | Add a new string to all languages at once — pick the target file (JSON, PHP group or vendor) |
 | **Edit string** | Edit one key across all languages         |
 
 ### Coverage screen

@@ -24,11 +24,11 @@
                         <span class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">source</span>
                     @endif
                 </div>
-                <div class="text-xs text-gray-400 font-mono mt-0.5">{{ $file->basename }}</div>
+                <div class="text-xs text-gray-400 font-mono mt-0.5">{{ $file->filename }}</div>
             </div>
         </a>
         @empty
-        <p class="text-gray-500 col-span-3">No language files found in <code>resources/lang/</code>.</p>
+        <p class="text-gray-500 col-span-3">No language files found in <code>{{ config('l18n-translator.lang_path') }}</code>.</p>
         @endforelse
     </div>
 
@@ -85,6 +85,7 @@
                     <p class="mt-1.5 text-xs text-gray-500">
                         An empty <code class="font-mono">{lang}.json</code> will be created with all keys from
                         <code class="font-mono">{{ config('l18n-translator.main_language', 'en') }}.json</code>.
+                        PHP group and vendor files are created when their first translation is saved.
                         Use the editor to fill in translations manually or via DeepL.
                     </p>
                 </div>
