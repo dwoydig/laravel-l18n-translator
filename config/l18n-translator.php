@@ -35,7 +35,16 @@ return [
     'layout' => null,
 
     /*
-     * DeepL proxy — set DEEPL_AUTH_KEY in your .env to enable in-browser auto-translation.
+     * Active translation driver.
+     * Supported: "deepl", "google", "aws"
+     */
+    'translator' => [
+        'driver' => env('TRANSLATOR_DRIVER', 'deepl'),
+    ],
+
+    /*
+     * DeepL — set DEEPL_AUTH_KEY in your .env to enable.
+     * https://www.deepl.com/pro-api
      */
     'deepl' => [
         'enabled'     => (bool) env('DEEPL_AUTH_KEY'),
@@ -44,15 +53,44 @@ return [
         'formality'   => 'prefer_less',
         'context'     => '',
         'concurrency' => 5,
+        // ISO code overrides for DeepL's non-standard language codes.
+        'lang_map'    => [
+            'no' => 'NB',    // DeepL uses NB (Bokmål), not NO
+            'pt' => 'PT-PT', // DeepL distinguishes PT-PT / PT-BR; change to PT-BR if needed
+        ],
     ],
 
     /*
-     * Overrides for ISO codes that differ from DeepL's target_lang codes.
-     * Most languages work automatically (e.g. "de" → "DE").
-     * Only add entries here where DeepL deviates from the ISO code.
+     * Google Cloud Translation — set GOOGLE_TRANSLATE_API_KEY in your .env to enable.
+     * https://cloud.google.com/translate/docs/reference/rest
+     * Uses ISO 639-1 language codes (e.g. "de", "fr", "pt").
+     */
+    'google' => [
+        'api_key'     => env('GOOGLE_TRANSLATE_API_KEY'),
+        'concurrency' => 5,
+        'lang_map'    => [], // Add overrides here if needed
+    ],
+
+    /*
+     * AWS Translate — set AWS credentials in your .env to enable.
+     * Requires: composer require aws/aws-sdk-php
+     * https://docs.aws.amazon.com/translate/latest/dg/what-is.html
+     * Uses ISO 639-1 language codes (e.g. "de", "fr", "pt").
+     */
+    'aws' => [
+        'key'         => env('AWS_ACCESS_KEY_ID'),
+        'secret'      => env('AWS_SECRET_ACCESS_KEY'),
+        'region'      => env('AWS_DEFAULT_REGION', 'eu-west-1'),
+        'concurrency' => 5,
+        'lang_map'    => [], // Add overrides here if needed
+    ],
+
+    /*
+     * Kept for backward compatibility with published configs.
+     * New installs: use deepl.lang_map instead.
      */
     'deepl_lang_map' => [
-        'no' => 'NB',      // DeepL uses NB (Bokmål), not NO
-        'pt' => 'PT-PT',   // DeepL distinguishes PT-PT / PT-BR; change to PT-BR if needed
+        'no' => 'NB',
+        'pt' => 'PT-PT',
     ],
 ];

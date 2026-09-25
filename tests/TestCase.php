@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Dwoydig\L18nTranslator\Tests;
 
+use Dwoydig\L18nTranslator\Contracts\TranslatorContract;
+use Dwoydig\L18nTranslator\Services\Adapters\AwsTranslateAdapter;
+use Dwoydig\L18nTranslator\Services\Adapters\GoogleTranslateAdapter;
 use Dwoydig\L18nTranslator\TranslationServiceProvider;
 use Illuminate\Filesystem\Filesystem;
 use Orchestra\Testbench\TestCase as BaseTestCase;
@@ -59,6 +62,31 @@ abstract class TestCase extends BaseTestCase
         config()->set('l18n-translator.deepl.enabled', true);
         config()->set('l18n-translator.deepl.auth_key', 'test-key');
         config()->set('l18n-translator.deepl.endpoint', 'https://api.deepl.test/v2/translate');
+        config()->set('l18n-translator.translator.enabled', true);
+    }
+
+    /**
+     * Enables the Google Translate integration with a dummy key; combine with Http::fake().
+     * Also re-binds TranslatorContract to GoogleTranslateAdapter.
+     */
+    protected function enableGoogle(): void
+    {
+        config()->set('l18n-translator.google.api_key', 'test-google-key');
+        config()->set('l18n-translator.translator.enabled', true);
+        $this->app->singleton(TranslatorContract::class, fn ($app) => $app->make(GoogleTranslateAdapter::class));
+    }
+
+    /**
+     * Enables the AWS Translate integration with dummy credentials.
+     * Also re-binds TranslatorContract to AwsTranslateAdapter.
+     */
+    protected function enableAws(): void
+    {
+        config()->set('l18n-translator.aws.key', 'test-aws-key');
+        config()->set('l18n-translator.aws.secret', 'test-aws-secret');
+        config()->set('l18n-translator.aws.region', 'eu-west-1');
+        config()->set('l18n-translator.translator.enabled', true);
+        $this->app->singleton(TranslatorContract::class, fn ($app) => $app->make(AwsTranslateAdapter::class));
     }
 
     protected function langFile(string $relativePath): string
