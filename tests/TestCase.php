@@ -62,6 +62,7 @@ abstract class TestCase extends BaseTestCase
         config()->set('l18n-translator.deepl.enabled', true);
         config()->set('l18n-translator.deepl.auth_key', 'test-key');
         config()->set('l18n-translator.deepl.endpoint', 'https://api.deepl.test/v2/translate');
+        config()->set('l18n-translator.translator.enabled', true);
     }
 
     /**
@@ -71,6 +72,7 @@ abstract class TestCase extends BaseTestCase
     protected function enableGoogle(): void
     {
         config()->set('l18n-translator.google.api_key', 'test-google-key');
+        config()->set('l18n-translator.translator.enabled', true);
         $this->app->singleton(TranslatorContract::class, fn ($app) => $app->make(GoogleTranslateAdapter::class));
     }
 
@@ -83,6 +85,7 @@ abstract class TestCase extends BaseTestCase
         config()->set('l18n-translator.aws.key', 'test-aws-key');
         config()->set('l18n-translator.aws.secret', 'test-aws-secret');
         config()->set('l18n-translator.aws.region', 'eu-west-1');
+        config()->set('l18n-translator.translator.enabled', true);
         $this->app->singleton(TranslatorContract::class, fn ($app) => $app->make(AwsTranslateAdapter::class));
     }
 
