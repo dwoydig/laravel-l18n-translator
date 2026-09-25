@@ -23,6 +23,9 @@
         "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
         "phpunit/phpunit": "^10.1|^11.0|^12.0"
     },
+    "suggest": {
+        "aws/aws-sdk-php": "Required when using TRANSLATOR_DRIVER=aws"
+    },
     "autoload": {
         "psr-4": {
             "Dwoydig\\L18nTranslator\\": "src/"

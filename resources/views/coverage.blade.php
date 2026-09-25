@@ -8,7 +8,7 @@
     $total      = $stats->count();
     $complete   = $stats->where('pct', 100)->count();
     $incomplete = $total - $complete;
-    $deepl      = config('l18n-translator.deepl.enabled');
+    $deepl      = config('l18n-translator.translator.enabled');
 @endphp
 
 <div @if($deepl) x-data="coverageSelector()" @endif class="space-y-3">
