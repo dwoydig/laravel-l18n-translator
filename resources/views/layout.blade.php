@@ -117,7 +117,7 @@
                 <a href="{{ route('l18n.coverage') }}"  class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Coverage</a>
                 <a href="{{ route('l18n.missing') }}"   class="px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">Missing</a>
 
-                @if(config('l18n-translator.deepl.enabled'))
+                @if(config('l18n-translator.translator.driver') === 'deepl' && config('l18n-translator.translator.enabled'))
                 <div class="relative shrink-0" x-data="{ open: false }" x-init="$store.deeplUsage.load()" @click.outside="open = false">
                     <button type="button"
                         @click="open = !open"
@@ -154,7 +154,7 @@
     </main>
 
     @include('l18n-translator::partials.row-selection')
-    @if(config('l18n-translator.deepl.enabled'))
+    @if(config('l18n-translator.translator.enabled'))
     @include('l18n-translator::partials.deepl')
     @endif
     @yield('scripts')

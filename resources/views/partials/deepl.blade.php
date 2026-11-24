@@ -1,6 +1,11 @@
 <script>
-const TARGET_LANG_MAP    = @json(config('l18n-translator.deepl_lang_map', []));
-const DEEPL_CONCURRENCY  = {{ (int) config('l18n-translator.deepl.concurrency', 5) }};
+@php
+    $driver = config('l18n-translator.translator.driver', 'deepl');
+    $langMap = config("l18n-translator.{$driver}.lang_map", config('l18n-translator.deepl_lang_map', []));
+    $concurrency = (int) config("l18n-translator.{$driver}.concurrency", 5);
+@endphp
+const TARGET_LANG_MAP    = @json($langMap);
+const DEEPL_CONCURRENCY  = {{ $concurrency }};
 
 async function runConcurrent(tasks, concurrency = DEEPL_CONCURRENCY, signal) {
     for (let i = 0; i < tasks.length; i += concurrency) {

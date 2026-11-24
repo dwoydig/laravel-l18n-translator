@@ -13,7 +13,7 @@
 
         {{-- Controls bar --}}
         <div class="sticky top-0 z-10 bg-white border border-gray-200 rounded-lg px-4 py-3 mb-4 flex gap-2 items-center justify-end shadow-sm">
-            @if(config('l18n-translator.deepl.enabled'))
+            @if(config('l18n-translator.translator.enabled'))
             <div class="relative" x-data="{ showHint: false }">
                 <button type="button"
                     @click="busy ? cancelTranslation() : attemptTranslate()"

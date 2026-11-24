@@ -23,8 +23,8 @@
                        focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
 
-            {{-- DeepL --}}
-            @if(config('l18n-translator.deepl.enabled'))
+            {{-- Auto-translate --}}
+            @if(config('l18n-translator.translator.enabled'))
             <div class="relative" x-data="{ showHint: false }">
                 <button type="button"
                     @click="busy ? cancelTranslation() : translateSelected()"
