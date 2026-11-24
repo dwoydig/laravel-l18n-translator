@@ -57,6 +57,7 @@ class DeeplAdapter extends AbstractTranslatorAdapter
         }
 
         [$encoded, $placeholders] = $this->encodePlaceholders($text);
+        $encoded = $this->escapeAmpersands($encoded);
 
         // DeepL only supports EN-GB and EN-US as English target variants.
         if (str_starts_with($targetLang, 'EN-') && !in_array($targetLang, ['EN-GB', 'EN-US'], true)) {
@@ -91,7 +92,22 @@ class DeeplAdapter extends AbstractTranslatorAdapter
             throw new RuntimeException('Missing translation in DeepL response');
         }
 
-        return $this->decodePlaceholders($translated, $placeholders);
+        return $this->decodePlaceholders($this->unescapeAmpersands($translated, $text), $placeholders);
+    }
+
+    /**
+     * Escape bare "&" as "&amp;"; with tag_handling=xml DeepL rejects them with HTTP 400.
+     * Existing entities such as "&amp;" or "&#039;" are left as they are.
+     */
+    private function escapeAmpersands(string $text): string
+    {
+        return preg_replace('/&(?!#?[a-zA-Z0-9]+;)/', '&amp;', $text);
+    }
+
+    /** Turn "&amp;" in the translation back into "&", unless the source text itself contained "&amp;". */
+    private function unescapeAmpersands(string $translated, string $original): string
+    {
+        return str_contains($original, '&amp;') ? $translated : str_replace('&amp;', '&', $translated);
     }
 
     /** @throws RuntimeException when DeepL is not configured. */
