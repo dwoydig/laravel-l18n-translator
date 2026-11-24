@@ -16,7 +16,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { php: '8.1', laravel: '10.*', testbench: '8.*' }
           - { php: '8.2', laravel: '11.*', testbench: '9.*' }
           - { php: '8.3', laravel: '12.*', testbench: '10.*' }
           - { php: '8.4', laravel: '13.*', testbench: '11.*' }
@@ -31,6 +30,9 @@ jobs:
           coverage: none
 
       - name: Install dependencies
+        # Composer refuses every Laravel 11 release because of security advisories; the matrix still tests it.
+        env:
+          COMPOSER_NO_SECURITY_BLOCKING: 1
         run: |
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --dev --no-update --no-interaction
           composer update --prefer-dist --no-interaction --no-progress

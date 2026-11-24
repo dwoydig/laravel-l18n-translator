@@ -67,8 +67,8 @@ When the Deepl integration is set up, it shows your remaining translation budget
 
 ## Requirements
 
-- PHP 8.1+
-- Laravel 10, 11, 12, or 13
+- PHP 8.2+
+- Laravel 11, 12, or 13
 - `ext-intl` (for locale name resolution and flag detection)
 
 ---
@@ -242,7 +242,7 @@ composer test:e2e          # Playwright browser tests against `vendor/bin/testbe
 
 - **PHP tests** (`tests/Unit`, `tests/Feature`) run against a fresh copy of `tests/Fixtures/lang` per test (JSON, PHP group and `vendor/cashier` fixtures). DeepL calls are faked with `Http::fake()`.
 - **Browser tests** (`tests/Browser`) start the package via `testbench serve` (configured in `testbench.yaml`), reset `tests/Browser/.lang` from the fixtures before every test and mock the package's `/deepl` endpoints — no real DeepL requests are made. Tailwind and Alpine are loaded from their CDNs, so the browser tests need network access.
-- **CI** (`.github/workflows/tests.yml`) runs PHPUnit on Laravel 10–13 and the Playwright suite on every pull request.
+- **CI** (`.github/workflows/tests.yml`) runs PHPUnit on Laravel 11–13 and the Playwright suite on every pull request.
 
 ---
 

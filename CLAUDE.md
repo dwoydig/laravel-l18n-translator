@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Laravel-Package (`dwoydig/l18n-translator`) zur Verwaltung von JSON-Sprachdateien über eine Web-UI mit optionaler DeepL-Übersetzung.
-PHP ^8.1, Laravel 10–12. Frontend: Blade + Tailwind CSS (CDN) + Alpine.js.
+PHP ^8.2, Laravel 11–13. Frontend: Blade + Tailwind CSS (CDN) + Alpine.js.
 
 ## Struktur
 
@@ -52,7 +52,7 @@ PHP ^8.1, Laravel 10–12. Frontend: Blade + Tailwind CSS (CDN) + Alpine.js.
 - PHP-Logik und Routen: PHPUnit mit Orchestra Testbench in `tests/Unit` bzw. `tests/Feature` (`composer test`). Tests erben von `Tests\TestCase`, das pro Test eine frische Kopie von `tests/Fixtures/lang` bereitstellt.
 - Frontend-Verhalten (Alpine.js, Filter, Auswahl, DeepL-UI): Playwright in `tests/Browser` (`composer test:e2e`). Keine echten DeepL-Aufrufe – im PHP-Test `Http::fake()`, im Browser-Test die gemockten `/deepl`-Routen aus `tests/Browser/fixtures.ts`.
 - Neue Beispieldaten gehören in `tests/Fixtures/lang` und werden von beiden Suites genutzt.
-- Vor jedem Commit müssen `composer test` und `composer test:e2e` grün sein. Die CI prüft Laravel 10–13.
+- Vor jedem Commit müssen `composer test` und `composer test:e2e` grün sein. Die CI prüft Laravel 11–13.
 
 ## Git-Workflow
 
